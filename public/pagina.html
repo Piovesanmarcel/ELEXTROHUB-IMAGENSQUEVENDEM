@@ -1,0 +1,206 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autorização MercadoLivre - Luarco</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #FFE600, #FFC107);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+        }
+        
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #1976d2;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .details {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">L</div>
+        <h1>Luarco</h1>
+        <p>Processando autorização do MercadoLivre...</p>
+        
+        <div id="status" class="status loading">
+            <div class="spinner"></div>
+            Conectando com o sistema...
+        </div>
+
+        <div id="details" class="details" style="display: none;"></div>
+        
+        <div class="footer">
+            <p>© 2024 Luarco. Todos os direitos reservados.</p>
+        </div>
+    </div>
+
+    <script>
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                code: params.get('code'),
+                state: params.get('state'),
+                error: params.get('error'),
+                error_description: params.get('error_description')
+            };
+        }
+
+        function updateStatus(message, type = 'loading', showDetails = null) {
+            const statusElement = document.getElementById('status');
+            const detailsElement = document.getElementById('details');
+            
+            statusElement.className = `status ${type}`;
+            
+            if (type === 'loading') {
+                statusElement.innerHTML = `<div class="spinner"></div>${message}`;
+            } else {
+                statusElement.innerHTML = message;
+            }
+
+            if (showDetails) {
+                detailsElement.innerHTML = showDetails;
+                detailsElement.style.display = 'block';
+            } else {
+                detailsElement.style.display = 'none';
+            }
+        }
+
+        async function processAuthorization() {
+            try {
+                const params = getUrlParams();
+                
+                console.log('🟡 Parâmetros recebidos:', params);
+                
+                if (params.error) {
+                    const errorMsg = `Erro na autorização: ${params.error_description || params.error}`;
+                    updateStatus('❌ ' + errorMsg, 'error');
+                    console.error('❌ Erro de autorização:', params.error);
+                    return;
+                }
+                
+                if (!params.code) {
+                    updateStatus('❌ Código de autorização não encontrado', 'error', 
+                        'Parâmetros recebidos: ' + JSON.stringify(params));
+                    console.error('❌ Code não fornecido:', params);
+                    return;
+                }
+
+                console.log('✅ Código recebido:', params.code);
+                console.log('🟡 State:', params.state || 'não fornecido');
+
+                updateStatus('📡 Processando com MercadoLivre...', 'loading');
+
+                // Redirecionar diretamente para o callback do Supabase
+                const callbackUrl = `https://bpqtzydsxmjazdzzcvno.supabase.co/functions/v1/mercadolivre-callback?code=${encodeURIComponent(params.code)}${params.state ? '&state=' + encodeURIComponent(params.state) : ''}`;
+                
+                console.log('🟡 Redirecionando para:', callbackUrl);
+                
+                updateStatus('🔄 Finalizando integração...', 'loading');
+                
+                setTimeout(() => {
+                    window.location.href = callbackUrl;
+                }, 1500);
+
+            } catch (error) {
+                console.error('❌ Erro ao processar autorização:', error);
+                updateStatus('❌ Erro de conexão. Tente novamente.', 'error', 
+                    'Erro: ' + error.message);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🟡 Página carregada, iniciando processamento...');
+            setTimeout(processAuthorization, 1000);
+        });
+    </script>
+</body>
+</html>

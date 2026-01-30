@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autorização MercadoLivre - Luarco</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #FFE600, #FFC107);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+        }
+        
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #1976d2;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">L</div>
+        <h1>Luarco</h1>
+        <p>Processando autorização do MercadoLivre...</p>
+        
+        <div id="status" class="status loading">
+            <div class="spinner"></div>
+            Conectando com o sistema...
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 Luarco. Todos os direitos reservados.</p>
+        </div>
+    </div>
+
+    <script>
+        // Função para extrair parâmetros da URL
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                code: params.get('code'),
+                state: params.get('state'),
+                error: params.get('error'),
+                error_description: params.get('error_description')
+            };
+        }
+
+        // Função para atualizar status na tela
+        function updateStatus(message, type = 'loading') {
+            const statusElement = document.getElementById('status');
+            statusElement.className = `status ${type}`;
+            
+            if (type === 'loading') {
+                statusElement.innerHTML = `<div class="spinner"></div>${message}`;
+            } else {
+                statusElement.innerHTML = message;
+            }
+        }
+
+        // Função principal para processar a autorização
+        async function processAuthorization() {
+            try {
+                const params = getUrlParams();
+                
+                // Verificar se há erro na autorização
+                if (params.error) {
+                    updateStatus(`Erro na autorização: ${params.error_description || params.error}`, 'error');
+                    return;
+                }
+                
+                // Verificar se temos o código necessário
+                if (!params.code || !params.state) {
+                    updateStatus('Parâmetros de autorização inválidos', 'error');
+                    return;
+                }
+
+                updateStatus('Enviando código de autorização...', 'loading');
+
+                // Enviar código para o backend
+                const response = await fetch('https://bpqtzydsxmjazdzzcvno.supabase.co/functions/v1/mercadolivre-auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: params.code,
+                        state: params.state
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    updateStatus('✅ Autorização realizada com sucesso! Você pode fechar esta janela.', 'success');
+                    
+                    // Fechar janela após 3 segundos se foi aberta como popup
+                    setTimeout(() => {
+                        if (window.opener) {
+                            window.close();
+                        }
+                    }, 3000);
+                } else {
+                    updateStatus(`❌ Erro: ${result.error || 'Falha na autorização'}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Erro ao processar autorização:', error);
+                updateStatus('❌ Erro de conexão. Tente novamente.', 'error');
+            }
+        }
+
+        // Executar quando a página carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            // Aguardar um momento para mostrar a tela de carregamento
+            setTimeout(processAuthorization, 1000);
+        });
+
+        // Log dos parâmetros para debug
+        console.log('Parâmetros recebidos:', getUrlParams());
+    </script>
+</body>
+</html>

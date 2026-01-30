@@ -1,0 +1,165 @@
+{
+    "name": "Credit Reservation Nodes",
+    "nodes": [
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://bpqtzydsxmjazdzzcvno.supabase.co/rest/v1/rpc/reserve_and_get_id",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "SUA_SERVICE_ROLE_KEY_AQUI"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        },
+                        {
+                            "name": "Prefer",
+                            "value": "return=representation"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"p_user_id\": \"{{ $json.userId }}\",\n  \"p_job_id\": \"{{ $json.jobId }}\",\n  \"p_amount\": 1\n}",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "reservar-credito",
+            "name": "Reservar Crédito",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "check-reservation",
+                            "leftValue": "={{ $json }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "isNotEmpty"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "reserva-ok",
+            "name": "Reserva OK?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                720,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://bpqtzydsxmjazdzzcvno.supabase.co/rest/v1/rpc/confirm_credit_debit",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "SUA_SERVICE_ROLE_KEY_AQUI"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"p_reservation_id\": \"{{ $json.reservationId }}\"\n}",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "confirmar-debito",
+            "name": "Confirmar Débito",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1400,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://bpqtzydsxmjazdzzcvno.supabase.co/rest/v1/rpc/cancel_credit_reservation",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "SUA_SERVICE_ROLE_KEY_AQUI"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"p_reservation_id\": \"{{ $json.reservationId }}\",\n  \"p_reason\": \"job_failed\"\n}",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "cancelar-reserva",
+            "name": "Cancelar Reserva",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1400,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Reservar Crédito": {
+            "main": [
+                [
+                    {
+                        "node": "Reserva OK?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": []
+}
