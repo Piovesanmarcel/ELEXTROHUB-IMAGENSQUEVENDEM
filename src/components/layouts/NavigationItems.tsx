@@ -46,7 +46,7 @@ export const navigationItems: NavigationItem[] = [
     name: "Landing Page Oficial",
     href: "/saas-landing",
     icon: Rocket,
-    badge: "NOVO"
+    badge: null
   },
   {
     name: "Sobre",
@@ -90,25 +90,25 @@ export const navigationItems: NavigationItem[] = [
     name: "Gerador Teste 02",
     href: "/gerador-teste-02",
     icon: Beaker,
-    badge: "Teste"
+    badge: null
   },
   {
     name: "Gerador Completo N8N",
     href: "/gerador-unificado-test",
     icon: TestTube,
-    badge: "DEV"
+    badge: null
   },
   {
     name: "Gerador Unificado (Copy)",
     href: "/gerador-unificado-copy",
     icon: Wand2,
-    badge: "BETA"
+    badge: null
   },
   {
     name: "Gerador Unificado 02",
     href: "/gerador-unificado-copy02",
     icon: Wand2,
-    badge: "BETA"
+    badge: null
   },
 
   // { 
@@ -175,13 +175,13 @@ export const navigationItems: NavigationItem[] = [
     name: "Cloudinary Transform",
     href: "/cloudinary-transform",
     icon: ImageIcon,
-    badge: "NOVO"
+    badge: null
   },
   {
     name: "Editor de Templates",
     href: "/auto-template-mapper",
     icon: Layout,
-    badge: "NOVO"
+    badge: null
   },
   // { 
   //   name: "Runware Test", 
@@ -193,19 +193,19 @@ export const navigationItems: NavigationItem[] = [
     name: "Gerador EAN",
     href: "/ean-generator",
     icon: FileSpreadsheet,
-    badge: "NOVO"
+    badge: null
   },
   {
     name: "Melhoria de Imagens",
     href: "/melhoria-imagens",
     icon: ImageIcon,
-    badge: "NOVO"
+    badge: null
   },
   {
     name: "Relatório Webhooks",
     href: "/relatorio-webhooks",
     icon: Activity,
-    badge: "NOVO"
+    badge: null
   },
   {
     name: "Precificação",

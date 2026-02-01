@@ -14,10 +14,10 @@ export interface N8NTemplatePayload {
   timestamp: string;
   source: 'lovable-canva-template-n8n';
   version: '1.0';
-  
+
   // Prompt completo montado (igual edge function)
   prompt: string;
-  
+
   // Imagens em base64
   images: {
     reference_base64: string;
@@ -25,7 +25,7 @@ export interface N8NTemplatePayload {
     product_images_base64: string[];
     logo_base64?: string;
   };
-  
+
   // Metadados
   metadata: {
     templateId: string;
@@ -35,7 +35,7 @@ export interface N8NTemplatePayload {
     promptMode: string;
     zones: any[];
   };
-  
+
   config: {
     quality: 'standard' | 'HD';
     promptMode: 'complete' | 'reduced' | 'minimal';
@@ -225,13 +225,13 @@ export function useCanvaTemplateN8N() {
       console.log('⚠️ [imageToBase64] URL vazia');
       return '';
     }
-    
+
     // Já é base64
     if (url.startsWith('data:image')) {
       console.log('✅ [imageToBase64] Já é base64, tamanho:', url.length);
       return url;
     }
-    
+
     // É blob URL
     if (url.startsWith('blob:')) {
       console.log('🔄 [imageToBase64] Convertendo blob URL...');
@@ -246,12 +246,12 @@ export function useCanvaTemplateN8N() {
         throw new Error(`Falha ao converter blob: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
       }
     }
-    
+
     // É URL HTTP - precisa fazer fetch com tratamento CORS
     if (url.startsWith('http')) {
       const urlPreview = url.substring(0, 80) + (url.length > 80 ? '...' : '');
       console.log('🔄 [imageToBase64] Convertendo URL HTTP:', urlPreview);
-      
+
       try {
         const response = await fetch(url, {
           mode: 'cors',
@@ -260,35 +260,35 @@ export function useCanvaTemplateN8N() {
             'Accept': 'image/*'
           }
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const blob = await response.blob();
         const base64 = await blobToBase64(blob);
         console.log('✅ [imageToBase64] URL convertida, tamanho base64:', base64.length, 'tipo:', blob.type);
         return base64;
-        
+
       } catch (error) {
         console.error('❌ [imageToBase64] Erro CORS/fetch para URL:', urlPreview, error);
-        
+
         // Tentar via image-proxy como fallback
         console.log('🔄 [imageToBase64] Tentando via image-proxy...');
         try {
           const { data: proxyData, error: proxyError } = await supabase.functions.invoke('image-proxy', {
             body: { imageUrl: url }
           });
-          
+
           if (proxyError) {
             throw new Error(`Proxy error: ${proxyError.message}`);
           }
-          
+
           if (proxyData?.base64) {
             console.log('✅ [imageToBase64] Proxy retornou base64, tamanho:', proxyData.base64.length);
             return proxyData.base64;
           }
-          
+
           throw new Error('Proxy não retornou base64');
         } catch (proxyErr) {
           console.error('❌ [imageToBase64] Falha no proxy também:', proxyErr);
@@ -296,7 +296,7 @@ export function useCanvaTemplateN8N() {
         }
       }
     }
-    
+
     console.log('⚠️ [imageToBase64] URL não reconhecida, retornando como está:', url.substring(0, 50));
     return url;
   };
@@ -320,7 +320,7 @@ export function useCanvaTemplateN8N() {
   ): Promise<N8NTemplateResponse> => {
     // ========== RETRY: Buscar sessão se userId for null ==========
     let currentUserId = userId;
-    
+
     if (!currentUserId) {
       console.log('⏳ [Canva-N8N] userId null, tentando buscar sessão...');
       const { data: { session } } = await supabase.auth.getSession();
@@ -349,7 +349,7 @@ export function useCanvaTemplateN8N() {
       });
       return { success: false, error: `Requisitos faltando: ${missingList}` };
     }
-    
+
     // Usar currentUserId daqui em diante
     const validatedUserId = currentUserId!;
 
@@ -359,7 +359,7 @@ export function useCanvaTemplateN8N() {
 
     try {
       console.log('🚀 [Canva-N8N] Preparando payload completo...');
-      
+
       // 1. Montar o prompt completo (igual edge function)
       const prompt = buildTemplatePrompt(
         template,
@@ -367,7 +367,7 @@ export function useCanvaTemplateN8N() {
         config.promptMode,
         config.incluir_logo
       );
-      
+
       // 2. Converter TODAS as imagens para base64 em paralelo
       const [
         referenceBase64,
@@ -378,17 +378,17 @@ export function useCanvaTemplateN8N() {
         imageToBase64(template.baseImage),
         ...images.slice(0, 5).map(img => imageToBase64(img))
       ]);
-      
+
       // 3. Converter logo se existir
       let logoBase64: string | undefined;
       if (config.incluir_logo && config.logo_url) {
         logoBase64 = await imageToBase64(config.logo_url);
       }
-      
+
       // 4. Gerar jobId e registrar na tabela authorized_jobs
-      const jobId = `canva_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+      const jobId = `job_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
       console.log('📋 [Canva-N8N] JobId gerado:', jobId);
-      
+
       // Registrar job na tabela de autorização (CRÍTICO para segurança)
       const { error: authError } = await supabase
         .from('authorized_jobs')
@@ -404,7 +404,7 @@ export function useCanvaTemplateN8N() {
             source: 'canva-template-n8n'
           }
         });
-      
+
       if (authError) {
         console.error('❌ [Canva-N8N] Erro ao registrar job autorizado:', authError);
         toast.error('Erro ao registrar job. Tente novamente.');
@@ -412,7 +412,7 @@ export function useCanvaTemplateN8N() {
         return { success: false, error: 'Falha ao registrar job autorizado' };
       }
       console.log('✅ [Canva-N8N] Job registrado em authorized_jobs');
-      
+
       // 5. Montar payload estruturado com jobId e userId
       const payload: N8NTemplatePayload = {
         request_id: crypto.randomUUID(),
@@ -421,16 +421,16 @@ export function useCanvaTemplateN8N() {
         timestamp: new Date().toISOString(),
         source: 'lovable-canva-template-n8n',
         version: '1.0',
-        
+
         prompt,
-        
+
         images: {
           reference_base64: referenceBase64,
           template_base64: templateBase64,
           product_images_base64: productImagesBase64.filter(Boolean),
           logo_base64: logoBase64,
         },
-        
+
         metadata: {
           templateId: template.id,
           templateName: template.name,
@@ -439,7 +439,7 @@ export function useCanvaTemplateN8N() {
           promptMode: config.promptMode,
           zones: template.zones,
         },
-        
+
         config: {
           quality: config.quality,
           promptMode: config.promptMode,
@@ -449,24 +449,24 @@ export function useCanvaTemplateN8N() {
 
       // ========== VALIDAÇÃO COMPLETA DO PAYLOAD ==========
       const validation = validateN8NPayload(payload);
-      
+
       if (!validation.valid) {
         console.error('❌ [Canva-N8N] Payload inválido:', validation.errors);
         console.error('📋 [Canva-N8N] Detalhes da validação:', validation.details);
-        
+
         const firstError = validation.errors[0] || 'Erro de validação desconhecido';
         toast.error(`Payload inválido: ${firstError}`, {
           description: `${validation.errors.length} erro(s) encontrado(s). Verifique o console.`,
           duration: 8000,
         });
-        
+
         setJobStatus('failed');
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: `Validação falhou: ${firstError}`,
         };
       }
-      
+
       console.log('✅ [Canva-N8N] Payload validado com sucesso');
 
       setJobStatus('processing');
@@ -476,8 +476,8 @@ export function useCanvaTemplateN8N() {
         images: {
           reference: referenceBase64?.startsWith('data:image') ? `✅ base64 (${referenceBase64.length} chars)` : '❌ NÃO é base64',
           template: templateBase64?.startsWith('data:image') ? `✅ base64 (${templateBase64.length} chars)` : '❌ NÃO é base64',
-          products: productImagesBase64.map((p, i) => 
-            p?.startsWith('data:image') ? `✅ produto${i+1} (${p.length} chars)` : `❌ produto${i+1} NÃO é base64`
+          products: productImagesBase64.map((p, i) =>
+            p?.startsWith('data:image') ? `✅ produto${i + 1} (${p.length} chars)` : `❌ produto${i + 1} NÃO é base64`
           ),
           logo: logoBase64?.startsWith('data:image') ? `✅ base64 (${logoBase64.length} chars)` : (config.incluir_logo ? '❌ NÃO é base64' : '⏭️ não solicitado'),
         },
@@ -508,10 +508,10 @@ export function useCanvaTemplateN8N() {
 
       // Processar resposta do n8n - aceitar imageUrl ou imageBase64 ou imagem
       const imageData = data?.imageUrl || data?.imageBase64 || data?.imagem;
-      
+
       // ✅ MELHORADO: Aceitar resposta com imagem mesmo sem success explícito
       const hasValidImage = imageData && (
-        typeof imageData === 'string' && 
+        typeof imageData === 'string' &&
         (imageData.startsWith('data:image') || imageData.startsWith('http') || imageData.startsWith('blob:'))
       );
 
@@ -525,7 +525,7 @@ export function useCanvaTemplateN8N() {
             const [header, base64Data] = imageData.split(',');
             const mimeMatch = header.match(/data:(image\/[^;]+)/);
             const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-            
+
             // Converter para Blob
             const byteCharacters = atob(base64Data);
             const byteNumbers = new Array(byteCharacters.length);
@@ -534,7 +534,7 @@ export function useCanvaTemplateN8N() {
             }
             const byteArray = new Uint8Array(byteNumbers);
             const blob = new Blob([byteArray], { type: mimeType });
-            
+
             // Criar Blob URL
             finalImageUrl = URL.createObjectURL(blob);
             console.log('✅ [Canva-N8N] Blob URL criada:', finalImageUrl);
@@ -544,7 +544,7 @@ export function useCanvaTemplateN8N() {
             finalImageUrl = imageData;
           }
         }
-        
+
         setJobStatus('completed');
         const response: N8NTemplateResponse = {
           success: true,
@@ -572,10 +572,10 @@ export function useCanvaTemplateN8N() {
       const elapsed = Date.now() - startTime;
       setProcessingTime(elapsed);
       setJobStatus('failed');
-      
+
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       console.error('❌ [Canva-N8N] Erro:', errorMsg);
-      
+
       const response = { success: false, error: errorMsg };
       setResponse(response);
       toast.error(`Erro: ${errorMsg}`);

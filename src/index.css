@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Satoshi:wght@400;500;700;900&family=Clash+Display:wght@600;700&display=swap');
 @tailwind base;
 @tailwind components;
@@ -26,7 +25,7 @@
     --input: 30 20% 88%;
     --ring: 16 90% 58%;
     --radius: 1rem;
-    
+
     /* Custom colors */
     --coral: 16 90% 58%;
     --coral-light: 16 90% 68%;
@@ -57,7 +56,7 @@
     --border: 20 14% 20%;
     --input: 20 14% 20%;
     --ring: 16 90% 58%;
-    
+
     --cream: 20 14% 12%;
     --charcoal: 45 20% 95%;
   }
@@ -67,12 +66,18 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground transition-colors duration-300;
     font-family: 'Satoshi', system-ui, sans-serif;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Clash Display', 'Satoshi', sans-serif;
   }
 }
@@ -81,104 +86,161 @@
   .gradient-coral {
     @apply bg-gradient-to-r from-[hsl(var(--coral))] to-[hsl(var(--coral-light))];
   }
-  
+
   .gradient-teal {
     @apply bg-gradient-to-r from-[hsl(var(--teal))] to-[hsl(var(--teal-light))];
   }
-  
+
   .text-gradient-coral {
     @apply bg-gradient-to-r from-[hsl(var(--coral-dark))] to-[hsl(var(--coral))] bg-clip-text text-transparent;
   }
-  
+
   .blob {
     border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
     animation: blob-morph 8s ease-in-out infinite;
   }
-  
+
   @keyframes blob-morph {
-    0%, 100% {
+
+    0%,
+    100% {
       border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
     }
+
     50% {
       border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
     }
   }
-  
+
   .card-hover {
     @apply transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl;
   }
-  
+
   .noise-bg {
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
     opacity: 0.03;
   }
-  
+
   .marquee {
     animation: marquee 30s linear infinite;
   }
-  
+
   @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    0% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(-50%);
+    }
   }
-  
+
   /* Netflix-style infinite scroll animations */
   @keyframes scroll-left {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    0% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(-50%);
+    }
   }
-  
+
   @keyframes scroll-right {
-    0% { transform: translateX(-50%); }
-    100% { transform: translateX(0); }
+    0% {
+      transform: translateX(-50%);
+    }
+
+    100% {
+      transform: translateX(0);
+    }
   }
-  
+
   .animation-paused {
     animation-play-state: paused !important;
   }
-  
+
   .float-slow {
     animation: float-slow 6s ease-in-out infinite;
   }
-  
+
   @keyframes float-slow {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
+
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-20px);
+    }
   }
-  
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
   .pulse-glow {
     animation: pulse-glow 2s ease-in-out infinite;
   }
-  
+
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 30px hsl(var(--coral) / 0.3); }
-    50% { box-shadow: 0 0 50px hsl(var(--coral) / 0.5); }
+
+    0%,
+    100% {
+      box-shadow: 0 0 30px hsl(var(--coral) / 0.3);
+    }
+
+    50% {
+      box-shadow: 0 0 50px hsl(var(--coral) / 0.5);
+    }
   }
-  
+
   /* Animações glow para nomes dos agentes ATLAS, LYRA, ORION */
   @keyframes glow-atlas {
-    0%, 100% { 
+
+    0%,
+    100% {
       text-shadow: 0 0 10px #06b6d4, 0 0 20px #06b6d4, 0 0 30px #06b6d4;
     }
-    50% { 
+
+    50% {
       text-shadow: 0 0 20px #06b6d4, 0 0 40px #06b6d4, 0 0 60px #06b6d4;
     }
   }
 
   @keyframes glow-lyra {
-    0%, 100% { 
+
+    0%,
+    100% {
       text-shadow: 0 0 10px #8b5cf6, 0 0 20px #8b5cf6, 0 0 30px #8b5cf6;
     }
-    50% { 
+
+    50% {
       text-shadow: 0 0 20px #8b5cf6, 0 0 40px #8b5cf6, 0 0 60px #8b5cf6;
     }
   }
 
   @keyframes glow-orion {
-    0%, 100% { 
+
+    0%,
+    100% {
       text-shadow: 0 0 10px hsl(var(--coral)), 0 0 20px hsl(var(--coral)), 0 0 30px hsl(var(--coral));
     }
-    50% { 
+
+    50% {
       text-shadow: 0 0 20px hsl(var(--coral)), 0 0 40px hsl(var(--coral)), 0 0 60px hsl(var(--coral));
     }
   }
@@ -196,40 +258,38 @@
     animation: glow-orion 2s ease-in-out infinite;
     animation-delay: 0.6s;
   }
-  
+
   /* Animação arco-íris correndo em volta */
   @property --rainbow-angle {
     syntax: '<angle>';
     initial-value: 0deg;
     inherits: false;
   }
-  
+
   .animate-rainbow-glow {
     animation: rainbow-spin 2s linear infinite, rainbow-glow-pulse 1s ease-in-out infinite;
     position: relative;
   }
-  
+
   .animate-rainbow-glow::before {
     content: '';
     position: absolute;
     inset: -3px;
     border-radius: inherit;
-    background: conic-gradient(
-      from var(--rainbow-angle),
-      #ff0000,
-      #ff7700,
-      #ffff00,
-      #00ff00,
-      #00ffff,
-      #0000ff,
-      #8b00ff,
-      #ff00ff,
-      #ff0000
-    );
+    background: conic-gradient(from var(--rainbow-angle),
+        #ff0000,
+        #ff7700,
+        #ffff00,
+        #00ff00,
+        #00ffff,
+        #0000ff,
+        #8b00ff,
+        #ff00ff,
+        #ff0000);
     z-index: -1;
     animation: rainbow-spin 2s linear infinite;
   }
-  
+
   .animate-rainbow-glow::after {
     content: '';
     position: absolute;
@@ -238,26 +298,36 @@
     background: hsl(var(--background));
     z-index: -1;
   }
-  
+
   @keyframes rainbow-spin {
-    0% { --rainbow-angle: 0deg; }
-    100% { --rainbow-angle: 360deg; }
+    0% {
+      --rainbow-angle: 0deg;
+    }
+
+    100% {
+      --rainbow-angle: 360deg;
+    }
   }
-  
+
   @keyframes rainbow-glow-pulse {
-    0%, 100% { 
+
+    0%,
+    100% {
       box-shadow: 0 0 15px #ff0000, 0 0 25px #ff7700, 0 0 35px #ffff00;
       filter: brightness(1);
     }
-    25% { 
+
+    25% {
       box-shadow: 0 0 15px #00ff00, 0 0 25px #00ffff, 0 0 35px #0000ff;
       filter: brightness(1.1);
     }
-    50% { 
+
+    50% {
       box-shadow: 0 0 20px #8b00ff, 0 0 30px #ff00ff, 0 0 40px #ff0000;
       filter: brightness(1.15);
     }
-    75% { 
+
+    75% {
       box-shadow: 0 0 15px #ffff00, 0 0 25px #00ff00, 0 0 35px #00ffff;
       filter: brightness(1.1);
     }
@@ -275,18 +345,16 @@
   position: absolute;
   inset: -4px;
   border-radius: inherit;
-  background: conic-gradient(
-    from var(--rainbow-angle),
-    transparent 0deg,
-    transparent 30deg,
-    #ff00ff 60deg,
-    #a855f7 100deg,
-    #00ffff 140deg,
-    #ec4899 180deg,
-    #a855f7 220deg,
-    transparent 260deg,
-    transparent 360deg
-  );
+  background: conic-gradient(from var(--rainbow-angle),
+      transparent 0deg,
+      transparent 30deg,
+      #ff00ff 60deg,
+      #a855f7 100deg,
+      #00ffff 140deg,
+      #ec4899 180deg,
+      #a855f7 220deg,
+      transparent 260deg,
+      transparent 360deg);
   z-index: -1;
   animation: rainbow-spin 1.2s linear infinite;
   filter: blur(1px);
@@ -298,14 +366,12 @@
   position: absolute;
   inset: -8px;
   border-radius: inherit;
-  background: conic-gradient(
-    from var(--rainbow-angle),
-    transparent 0deg,
-    rgba(168, 85, 247, 0.5) 90deg,
-    rgba(0, 255, 255, 0.5) 180deg,
-    rgba(236, 72, 153, 0.5) 270deg,
-    transparent 360deg
-  );
+  background: conic-gradient(from var(--rainbow-angle),
+      transparent 0deg,
+      rgba(168, 85, 247, 0.5) 90deg,
+      rgba(0, 255, 255, 0.5) 180deg,
+      rgba(236, 72, 153, 0.5) 270deg,
+      transparent 360deg);
   z-index: -2;
   animation: rainbow-spin 1.2s linear infinite, snake-glow 2s ease-in-out infinite;
   filter: blur(12px);
@@ -313,12 +379,21 @@
 
 /* Animação de pulse no glow */
 @keyframes snake-glow {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.03); }
+
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
 }
 
 /* Cobertura interna para esconder gradiente dentro do card */
-.animate-snake-border > * {
+.animate-snake-border>* {
   position: relative;
   z-index: 1;
   background: hsl(var(--background));
@@ -335,18 +410,16 @@
   position: absolute;
   inset: -6px;
   border-radius: inherit;
-  background: conic-gradient(
-    from var(--rainbow-angle),
-    transparent 0deg,
-    transparent 20deg,
-    #cd7f32 50deg,
-    #ffd700 90deg,
-    #ffb300 130deg,
-    #ffd700 170deg,
-    #f4a460 210deg,
-    transparent 250deg,
-    transparent 360deg
-  );
+  background: conic-gradient(from var(--rainbow-angle),
+      transparent 0deg,
+      transparent 20deg,
+      #cd7f32 50deg,
+      #ffd700 90deg,
+      #ffb300 130deg,
+      #ffd700 170deg,
+      #f4a460 210deg,
+      transparent 250deg,
+      transparent 360deg);
   z-index: -1;
   animation: rainbow-spin 1.5s linear infinite;
   filter: blur(1.5px);
@@ -358,14 +431,12 @@
   position: absolute;
   inset: -12px;
   border-radius: inherit;
-  background: conic-gradient(
-    from var(--rainbow-angle),
-    transparent 0deg,
-    rgba(255, 215, 0, 0.6) 90deg,
-    rgba(255, 179, 0, 0.6) 180deg,
-    rgba(205, 127, 50, 0.6) 270deg,
-    transparent 360deg
-  );
+  background: conic-gradient(from var(--rainbow-angle),
+      transparent 0deg,
+      rgba(255, 215, 0, 0.6) 90deg,
+      rgba(255, 179, 0, 0.6) 180deg,
+      rgba(205, 127, 50, 0.6) 270deg,
+      transparent 360deg);
   z-index: -2;
   animation: rainbow-spin 1.5s linear infinite, snake-glow-gold 2.5s ease-in-out infinite;
   filter: blur(16px);
@@ -373,12 +444,21 @@
 
 /* Animação de pulse dourado */
 @keyframes snake-glow-gold {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
 }
 
 /* Cobertura interna para versão gold */
-.animate-snake-border-gold > * {
+.animate-snake-border-gold>* {
   position: relative;
   z-index: 1;
   background: hsl(var(--background));
@@ -411,28 +491,34 @@
 
 /* Shimmer effect para cards em processamento */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .processing-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(var(--primary) / 0.1) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      hsl(var(--primary) / 0.1) 50%,
+      transparent 100%);
   background-size: 200% 100%;
   animation: shimmer 2s ease-in-out infinite;
 }
 
 /* Pulse border para cards ativos */
 @keyframes pulse-border {
-  0%, 100% { 
+
+  0%,
+  100% {
     border-color: hsl(var(--primary) / 0.3);
     box-shadow: 0 0 0 0 hsl(var(--primary) / 0.2);
   }
-  50% { 
+
+  50% {
     border-color: hsl(var(--primary) / 0.6);
     box-shadow: 0 0 12px 2px hsl(var(--primary) / 0.15);
   }
@@ -448,12 +534,10 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(var(--primary) / 0.05) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      hsl(var(--primary) / 0.05) 50%,
+      transparent 100%);
   background-size: 200% 100%;
   animation: shimmer 2s ease-in-out infinite;
   pointer-events: none;
@@ -461,8 +545,13 @@
 
 /* Efeito de progresso suave */
 @keyframes progress-flow {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .progress-animated::after {
@@ -472,22 +561,23 @@
   left: 0;
   width: 50%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    hsl(var(--primary-foreground) / 0.3),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      hsl(var(--primary-foreground) / 0.3),
+      transparent);
   animation: progress-flow 1.5s ease-in-out infinite;
 }
 
 /* Animação de "trabalhando" para ícones */
 @keyframes working-pulse {
-  0%, 100% { 
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
-  50% { 
+
+  50% {
     opacity: 0.7;
     transform: scale(0.95);
   }
@@ -501,11 +591,14 @@
 
 /* Main floating effect */
 @keyframes infinity-float {
-  0%, 100% { 
-    transform: translateY(0px); 
+
+  0%,
+  100% {
+    transform: translateY(0px);
   }
-  50% { 
-    transform: translateY(-8px); 
+
+  50% {
+    transform: translateY(-8px);
   }
 }
 
@@ -515,15 +608,17 @@
 
 /* Particle rising effect */
 @keyframes infinity-particle {
-  0% { 
-    transform: translateY(0) scale(1); 
+  0% {
+    transform: translateY(0) scale(1);
     opacity: 0.9;
   }
+
   50% {
     opacity: 1;
   }
-  100% { 
-    transform: translateY(-40px) scale(0); 
+
+  100% {
+    transform: translateY(-40px) scale(0);
     opacity: 0;
   }
 }
@@ -534,12 +629,13 @@
 
 /* Energy ring expanding */
 @keyframes infinity-ring {
-  0% { 
-    transform: scale(1) rotate(0deg); 
+  0% {
+    transform: scale(1) rotate(0deg);
     opacity: 0.6;
   }
-  100% { 
-    transform: scale(2) rotate(180deg); 
+
+  100% {
+    transform: scale(2) rotate(180deg);
     opacity: 0;
   }
 }
@@ -550,8 +646,13 @@
 
 /* Orbital rotation */
 @keyframes infinity-orbit {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-infinity-orbit {
@@ -560,12 +661,15 @@
 
 /* Dot pulse */
 @keyframes infinity-dot-pulse {
-  0%, 100% { 
-    transform: scale(1); 
+
+  0%,
+  100% {
+    transform: scale(1);
     opacity: 0.8;
   }
-  50% { 
-    transform: scale(1.3); 
+
+  50% {
+    transform: scale(1.3);
     opacity: 1;
   }
 }
@@ -576,13 +680,15 @@
 
 /* Path drawing animation */
 @keyframes infinity-draw {
-  0% { 
+  0% {
     stroke-dashoffset: 600;
   }
+
   50% {
     stroke-dashoffset: 0;
   }
-  100% { 
+
+  100% {
     stroke-dashoffset: -600;
   }
 }
@@ -593,11 +699,14 @@
 
 /* Glow pulse */
 @keyframes infinity-glow-pulse {
-  0%, 100% { 
+
+  0%,
+  100% {
     opacity: 0.4;
     filter: blur(12px);
   }
-  50% { 
+
+  50% {
     opacity: 0.7;
     filter: blur(16px);
   }
@@ -609,11 +718,14 @@
 
 /* Center pulse */
 @keyframes infinity-center-pulse {
-  0%, 100% { 
+
+  0%,
+  100% {
     transform: scale(1);
     opacity: 0.8;
   }
-  50% { 
+
+  50% {
     transform: scale(1.3);
     opacity: 1;
   }
@@ -625,8 +737,15 @@
 
 /* Breathe on hover */
 @keyframes infinity-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 .animate-infinity-breathe {
@@ -635,11 +754,14 @@
 
 /* Ambient glow */
 @keyframes infinity-ambient {
-  0%, 100% { 
+
+  0%,
+  100% {
     opacity: 0.6;
     transform: scale(1.5);
   }
-  50% { 
+
+  50% {
     opacity: 0.9;
     transform: scale(1.7);
   }
@@ -651,8 +773,13 @@
 
 /* Text shimmer */
 @keyframes infinity-text-shimmer {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
+  0% {
+    background-position: 0% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
 }
 
 .animate-infinity-text-shimmer {
@@ -661,8 +788,15 @@
 
 /* Subtitle fade */
 @keyframes infinity-subtitle {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.8; }
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .animate-infinity-subtitle {
@@ -671,8 +805,15 @@
 
 /* Legacy animations preserved for compatibility */
 @keyframes logo-float-1 {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 .animate-logo-float-1 {
@@ -680,8 +821,15 @@
 }
 
 @keyframes logo-float-2 {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .animate-logo-float-2 {
@@ -690,8 +838,15 @@
 }
 
 @keyframes logo-float-3 {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-5px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 .animate-logo-float-3 {
@@ -701,10 +856,13 @@
 
 /* Badge de status pulsante */
 @keyframes status-glow {
-  0%, 100% { 
+
+  0%,
+  100% {
     box-shadow: 0 0 4px hsl(var(--primary) / 0.4);
   }
-  50% { 
+
+  50% {
     box-shadow: 0 0 12px hsl(var(--primary) / 0.6);
   }
 }
@@ -715,8 +873,15 @@
 
 /* Fade in animation */
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
@@ -725,11 +890,12 @@
 
 /* Fade in up */
 @keyframes fade-in-up {
-  0% { 
+  0% {
     opacity: 0;
     transform: translateY(10px);
   }
-  100% { 
+
+  100% {
     opacity: 1;
     transform: translateY(0);
   }
@@ -745,10 +911,13 @@
 
 /* ATLAS - Azul/Cyan */
 @keyframes agent-pulse-blue {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 20px rgba(51, 181, 255, 0.4);
   }
+
   50% {
     transform: scale(1.05);
     box-shadow: 0 0 40px rgba(51, 181, 255, 0.6);
@@ -756,26 +925,44 @@
 }
 
 @keyframes orbit-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes orbit-medium {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(-360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
 }
 
 @keyframes orbit-fast {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* LYRA - Violeta/Magenta */
 @keyframes agent-pulse-violet {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 20px rgba(153, 51, 255, 0.4);
   }
+
   50% {
     transform: scale(1.05);
     box-shadow: 0 0 40px rgba(153, 51, 255, 0.6);
@@ -787,10 +974,12 @@
     transform: scaleX(1);
     opacity: 0.3;
   }
+
   50% {
     transform: scaleX(1.2);
     opacity: 0.6;
   }
+
   100% {
     transform: scaleX(1);
     opacity: 0.3;
@@ -798,10 +987,13 @@
 }
 
 @keyframes sparkle {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.2;
     transform: scale(0.5);
   }
+
   50% {
     opacity: 1;
     transform: scale(1);
@@ -810,10 +1002,13 @@
 
 /* ORION - Coral/Âmbar */
 @keyframes agent-pulse-coral {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 20px rgba(255, 148, 77, 0.4);
   }
+
   50% {
     transform: scale(1.05);
     box-shadow: 0 0 40px rgba(255, 148, 77, 0.6);
@@ -821,10 +1016,13 @@
 }
 
 @keyframes twinkle {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.2;
     transform: scale(0.8);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.2);
@@ -832,9 +1030,12 @@
 }
 
 @keyframes float-pixel {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -882,4 +1083,8 @@
 
 .animate-float-pixel {
   animation: float-pixel 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float-slow 3s ease-in-out infinite;
 }

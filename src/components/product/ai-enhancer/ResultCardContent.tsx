@@ -34,45 +34,48 @@ const cleanOrphanBold = (text: string): string => {
 const normalizeLineBreaks = (text: string): string => {
   const emojiSeparators = ['🔍', '🎯', '⚙️', '🔄', '📋', '✨', '🛒', '💡', '❓', '🎁', '🎄', '💰', '🏆'];
   let normalized = cleanOrphanBold(text);
-  
+
   // Quebra antes de emojis de seção
   emojiSeparators.forEach(emoji => {
     normalized = normalized.replace(new RegExp(`([^\\n])${emoji}`, 'g'), `$1\n\n${emoji}`);
   });
-  
+
   // Quebra antes de bullets quando vêm após texto (não após newline)
   normalized = normalized.replace(/([^\n])- /g, '$1\n- ');
   normalized = normalized.replace(/([^\n])• /g, '$1\n• ');
   normalized = normalized.replace(/([^\n])✅ /g, '$1\n✅ ');
   normalized = normalized.replace(/([^\n])✓ /g, '$1\n✓ ');
-  
+
+  // ✅ Substituir Headers Markdown (####) por Check de Confirmação
+  normalized = normalized.replace(/^#{1,6}\s*/gm, '✅ ');
+
   return normalized.trim();
 };
 
 export const ResultCardContent = ({ improvedText }: ResultCardContentProps) => {
   // Normalizar quebras de linha (fallback para respostas sem formatação)
   const normalizedText = normalizeLineBreaks(improvedText);
-  
+
   // Padrão para detectar linhas que começam com emoji
   const emojiPattern = /^[🔍🎯⚙️🔄📋✨🛒💡❓✅🎁🎄💰🏆🌟⭐]/;
-  
+
   const lines = normalizedText.split('\n');
-  
+
   return (
     <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 p-3 rounded-md space-y-3">
       <div className="flex items-center gap-2">
         <Bot className="h-4 w-4 text-purple-600" />
         <span className="text-sm font-medium text-purple-800">Resultado IA</span>
       </div>
-      
+
       <div className="text-sm text-purple-800 whitespace-pre-line leading-relaxed border border-purple-300 p-3 rounded bg-white">
         {lines.map((line, index) => {
           const trimmedLine = line.trim();
-          
+
           // Verificar se a linha anterior era um título com emoji
           const previousLine = index > 0 ? lines[index - 1].trim() : '';
           const previousWasEmojiTitle = emojiPattern.test(previousLine);
-          
+
           // Linha vazia: só adiciona espaçamento se NÃO vier após título com emoji
           if (!trimmedLine) {
             if (previousWasEmojiTitle) {
@@ -80,7 +83,7 @@ export const ResultCardContent = ({ improvedText }: ResultCardContentProps) => {
             }
             return <div key={index} className="h-2" />;
           }
-          
+
           // Linha que começa com emoji = título de seção (negrito + espaçamento)
           if (emojiPattern.test(trimmedLine)) {
             return (
@@ -89,7 +92,7 @@ export const ResultCardContent = ({ improvedText }: ResultCardContentProps) => {
               </div>
             );
           }
-          
+
           // Linha com bullet, traço ou checkbox = item de lista
           if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•') || trimmedLine.startsWith('✅') || trimmedLine.startsWith('✓')) {
             return (
@@ -98,7 +101,7 @@ export const ResultCardContent = ({ improvedText }: ResultCardContentProps) => {
               </div>
             );
           }
-          
+
           // Linha numerada (1., 2., etc) = item de lista numerada
           if (/^\d+\./.test(trimmedLine)) {
             return (
@@ -107,7 +110,7 @@ export const ResultCardContent = ({ improvedText }: ResultCardContentProps) => {
               </div>
             );
           }
-          
+
           // Linha normal com possível negrito inline
           return <div key={index}>{processInlineBold(trimmedLine)}</div>;
         })}

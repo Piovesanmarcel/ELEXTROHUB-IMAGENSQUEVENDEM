@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, FileText, Loader2, Package, Settings2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { Product } from '@/lib/supabase';
-import { UnifiedAIResponse } from '@/components/product/ai-enhancer/types';
 import { createCompleteZipPackage } from '@/utils/completePackageGenerator';
 import { PDF_TEMPLATES } from '@/utils/ebookTemplates';
 import {
@@ -15,15 +13,17 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-// Tipo simplificado para produto (usado no Gerador)
+// Tipos
 interface SimpleProduct {
   nome: string;
   descricao?: string | null;
   sku?: string;
 }
 
+import { UnifiedAIResponse } from '@/components/product/ai-enhancer/types';
+
 interface EbookDownloadButtonProps {
-  product: Product | SimpleProduct;
+  product: SimpleProduct;
   unifiedData?: UnifiedAIResponse | null;
   copywritingText?: string;
   images?: Array<{ url: string; type?: string }>;
@@ -32,68 +32,8 @@ interface EbookDownloadButtonProps {
   className?: string;
   showOptions?: boolean;
   forceEnabled?: boolean;
+  customTrigger?: React.ReactNode;
 }
-
-// Dados mock para kit de demonstração
-const getMockData = (): { mockUnifiedData: UnifiedAIResponse; mockCopywriting: string } => ({
-  mockUnifiedData: {
-    topicos_conversao: {
-      improvedText: `✅ BENEFÍCIOS DO PRODUTO:
-• Benefício de demonstração 1
-• Benefício de demonstração 2  
-• Benefício de demonstração 3
-
-⏰ URGÊNCIA:
-• Oferta por tempo limitado
-
-🏆 PROVA SOCIAL:
-• Mais de 100 vendidos`,
-      keywords: ['benefício', 'vantagem', 'qualidade']
-    },
-    palavras_chave_seo: {
-      improvedText: `📊 PALAVRAS-CHAVE PRIMÁRIAS:
-palavra-chave-teste, produto demonstração
-
-📈 PALAVRAS-CHAVE SECUNDÁRIAS:
-teste, demonstração, exemplo
-
-🎯 CAUDA LONGA:
-kit de teste para download, demonstração de funcionalidade`,
-      keywords: ['palavra-chave-teste', 'teste', 'demonstração', 'exemplo']
-    },
-    perguntas_respostas: {
-      improvedText: `❓ PERGUNTA 1: Isso é um teste?
-✅ RESPOSTA: Sim, este é um kit de demonstração para validar o download.
-
-❓ PERGUNTA 2: O que está incluído?
-✅ RESPOSTA: PDF com guia de marketing, arquivos de texto e estrutura de pastas.`,
-      keywords: ['faq', 'perguntas', 'dúvidas'],
-      faqs: [
-        { question: 'Isso é um teste?', answer: 'Sim, este é um kit de demonstração para validar o download.' },
-        { question: 'O que está incluído?', answer: 'PDF com guia de marketing, arquivos de texto e estrutura de pastas.' }
-      ]
-    },
-    kits_criativos: {
-      improvedText: 'Kit criativo de demonstração com elementos visuais e textuais.',
-      keywords: ['kit', 'criativo', 'marketing']
-    }
-  },
-  mockCopywriting: `🎯 PRODUTO DE DEMONSTRAÇÃO
-
-Este é um exemplo de copywriting gerado automaticamente pelo sistema.
-
-✨ BENEFÍCIOS:
-• Teste completo do fluxo de download
-• Validação da estrutura do ZIP
-• Verificação do PDF gerado
-
-📦 O QUE VOCÊ RECEBE:
-- PDF com guia de marketing
-- Arquivos de texto organizados
-- Estrutura de pastas profissional
-
-🚀 Baixe agora e confira!`
-});
 
 const EbookDownloadButton: React.FC<EbookDownloadButtonProps> = ({
   product,
@@ -104,7 +44,8 @@ const EbookDownloadButton: React.FC<EbookDownloadButtonProps> = ({
   size = 'default',
   className = '',
   showOptions = true,
-  forceEnabled = false
+  forceEnabled = false,
+  customTrigger
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -124,25 +65,19 @@ const EbookDownloadButton: React.FC<EbookDownloadButtonProps> = ({
     });
 
     try {
-      // Atualizar progresso
       setProgress(10);
       toast.loading('Gerando eBook PDF...', { id: toastId });
 
-      // Usar dados mock se forceEnabled e não houver conteúdo real
-      const { mockUnifiedData, mockCopywriting } = getMockData();
-      const finalUnifiedData = unifiedData || (forceEnabled ? mockUnifiedData : null);
-      const finalCopywriting = copywritingText || (forceEnabled ? mockCopywriting : undefined);
-
       await createCompleteZipPackage({
         product,
-        unifiedData: finalUnifiedData,
-        copywritingText: finalCopywriting,
+        unifiedData,
+        copywritingText,
         images,
         templateId: selectedTemplate,
         includeImagesInPDF: includeImages,
         onProgress: (stage, percent) => {
           setProgress(percent);
-          toast.loading(`${stage}...`, { 
+          toast.loading(`${stage}...`, {
             id: toastId,
             description: `${percent}% concluído`
           });
@@ -167,23 +102,29 @@ const EbookDownloadButton: React.FC<EbookDownloadButtonProps> = ({
     }
   };
 
+  // Verificar se há conteúdo para download
   const hasContent = !!(
     unifiedData?.topicos_conversao ||
     unifiedData?.palavras_chave_seo ||
     unifiedData?.perguntas_respostas ||
     unifiedData?.kits_criativos ||
-    // Verificar se unifiedData tem qualquer chave com conteúdo
-    (unifiedData && Object.keys(unifiedData).some(key => {
-      const value = unifiedData[key as keyof typeof unifiedData];
-      return value && (typeof value === 'string' ? value.length > 0 : true);
-    })) ||
     copywritingText ||
-    ('descricao' in product && product.descricao) ||
+    product.descricao ||
     images.length > 0
   );
 
   const selectedTemplateData = PDF_TEMPLATES.find(t => t.id === selectedTemplate) || PDF_TEMPLATES[0];
 
+  // 1. Caso Custom Trigger (botão personalizado)
+  if (customTrigger) {
+    return (
+      <div onClick={(!isGenerating && (hasContent || forceEnabled)) ? handleDownload : undefined} className={className}>
+        {customTrigger}
+      </div>
+    );
+  }
+
+  // 2. Versão simples sem opções
   if (!showOptions) {
     return (
       <Button
@@ -208,6 +149,7 @@ const EbookDownloadButton: React.FC<EbookDownloadButtonProps> = ({
     );
   }
 
+  // Versão completa com opções
   return (
     <div className="flex items-center gap-2">
       <Popover open={optionsOpen} onOpenChange={setOptionsOpen}>
@@ -259,7 +201,7 @@ const EbookDownloadButton: React.FC<EbookDownloadButtonProps> = ({
 
             <div className="border-t pt-4 space-y-3">
               <h4 className="font-semibold text-sm">Opções de Conteúdo</h4>
-              
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4 text-muted-foreground" />
@@ -273,18 +215,12 @@ const EbookDownloadButton: React.FC<EbookDownloadButtonProps> = ({
                   onCheckedChange={setIncludeImages}
                 />
               </div>
-              
+
               {images.length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   {images.length} {images.length === 1 ? 'imagem disponível' : 'imagens disponíveis'}
                 </p>
               )}
-            </div>
-
-            <div className="border-t pt-3">
-              <p className="text-xs text-muted-foreground">
-                Template selecionado: <span className="font-medium text-foreground">{selectedTemplateData.name}</span>
-              </p>
             </div>
           </div>
         </PopoverContent>

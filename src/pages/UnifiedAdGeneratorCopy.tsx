@@ -140,7 +140,7 @@ export default function UnifiedAdGeneratorCopy() {
     webhookTratamentoCombinado, setWebhookTratamentoCombinado,
     isLoading
   } = useWebhookStorage();
-  const [isUnifiedFiring, setIsUnifiedFiring] = useState(false);
+
 
   // ✅ NOVO: Estado para indicador visual de upscale em progresso
   const [upscaleProgress, setUpscaleProgress] = useState<{
@@ -160,10 +160,18 @@ export default function UnifiedAdGeneratorCopy() {
   const step2RunningRef = useRef(false);
 
   // ✅ Hook para controle de automação (kill switch)
-  const { isPaused, loading: automationSettingsLoading, updating: automationSettingsUpdating, togglePaused } = useAutomationSettings();
+  // const { isPaused, loading: automationSettingsLoading, updating: automationSettingsUpdating, togglePaused } = useAutomationSettings();
+  // ✅ TRAVA DE SEGURANÇA: Forçar automação sempre ativa
+  const isPaused = false;
+  const automationSettingsLoading = false;
+  const automationSettingsUpdating = false;
+  const togglePaused = () => toast.info("A automação está configurada para ficar sempre ativa.");
 
   // ✅ NOVO: Ref para deduplicação de eventos n8n (evitar loop infinito)
   const processedN8NImagesRef = useRef<Set<string>>(new Set());
+
+  // ✅ Estado para Configurações Avançadas (Toggle)
+  const [showConfig, setShowConfig] = useState(false);
 
   // ✅ Estados para o Botão Mágico "Acionar Agentes de Conversão"
   const [isMagicFlowExecuting, setIsMagicFlowExecuting] = useState(false);
@@ -1543,132 +1551,7 @@ export default function UnifiedAdGeneratorCopy() {
     }
   };
 
-  // ===== WEBHOOK UNIFICADO 4 (Disparo Simultâneo) =====
-  const handleUnified4Fire = async () => {
-    const url1 = webhooks['n8n_unified_4_url_1'];
-    const url2 = webhooks['n8n_unified_4_url_2'];
-    const url3 = webhooks['n8n_unified_4_url_3'];
-    // const url4 = webhooks['n8n_unified_4_url_4']; // Removido por solicitação
 
-    // ✅ VALIDAÇÃO OBRIGATÓRIA: Imagem e Dados do Produto
-    if (productImages.length === 0) {
-      toast.error("⚠️ Atenção: Nenhuma imagem do produto encontrada! Faça o upload de pelo menos uma foto.");
-      return;
-    }
-
-    if (!formData.nome || formData.nome.trim() === '') {
-      toast.error("⚠️ Atenção: O Nome do Produto é obrigatório!");
-      return;
-    }
-
-    // Opcional: Validar descrição também se for crucial
-    if ((!formData.descricao || formData.descricao.trim() === '') && (!formData.descricao_curta || formData.descricao_curta.trim() === '')) {
-      toast.warning("ℹ️ Dica: Adicionar uma descrição ajuda a IA a gerar melhores resultados.");
-      toast.error("⚠️ Atenção: Adicione uma descrição para o produto.");
-      return;
-    }
-
-    if (!url1 && !url2 && !url3) {
-      toast.error("Configure pelo menos 1 URL para o Webhook Unificado 4");
-      return;
-    }
-
-    const activeUrls = [];
-    if (url1) activeUrls.push(url1);
-    if (url2) activeUrls.push(url2);
-    if (url3) activeUrls.push(url3);
-    // if (url4) activeUrls.push(url4);
-
-    toast.info(`🚀 Processando imagens e disparando ${activeUrls.length} webhooks...`);
-    setIsUnifiedFiring(true); // ✅ Trava o botão e inicia o "giro infinito"
-
-    // ✅ SUPER CORREÇÃO: Converter imagens para base64 igual ao Teste Paralelo
-    // N8N Redis espera: { filename, mimeType, base64, index }
-    let imagesToSend: Array<{ index: number; filename: string; mimeType: string; base64: string }> = [];
-
-    try {
-      for (let i = 0; i < Math.min(productImages.length, 3); i++) {
-        const response = await fetch(productImages[i]);
-        const blob = await response.blob();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(',')[1] || '');
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-
-        imagesToSend.push({
-          index: i + 1,
-          filename: `image_${i + 1}.png`,
-          mimeType: blob.type || 'image/png',
-          base64
-        });
-      }
-    } catch (error) {
-      console.error("Erro ao processar imagens:", error);
-      toast.error("Falha ao processar imagens. Tente novamente.");
-      setIsUnifiedFiring(false);
-      return;
-    }
-
-    // Gerar JobID (necessário para o N8N saber onde devolver a imagem)
-    const jobId = `unified_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    const effectiveUserId = userId; // Assumindo userId do escopo do componente
-
-    // Opcional: Registrar Job no Supabase se o fluxo N8N usar a tabela authorized_jobs para validação
-    // Vou registrar igual ao runSceneTests para garantir compatibilidade total
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    await supabase.from('authorized_jobs').insert({
-      job_id: jobId,
-      user_id: effectiveUserId,
-      expected_images: activeUrls.length, // Aproximação
-      status: 'active',
-      expires_at: expiresAt,
-      metadata: {
-        product_name: formData.nome,
-        source: 'unified-webhook-button'
-      }
-    });
-
-    const payload = {
-      request_id: `unified_req_${Date.now()}`,
-      job_id: jobId, // ✅ Importante para N8N Redis
-      jobId: jobId,  // Compatibilidade
-      product_name: formData.nome,
-      productName: formData.nome,
-      sku: formData.sku,
-      description: formData.descricao,
-      long_description: formData.descricao,
-      product_id: productId,
-      images: imagesToSend, // ✅ Array com Base64
-      user_id: effectiveUserId,
-      userId: effectiveUserId,
-      timestamp: new Date().toISOString(),
-      seo: { descricao: formData.descricao_curta || '', especificacoes: '' },
-      marketing: { texto_marketing: '' }
-    };
-
-    try {
-      await Promise.all(activeUrls.map(url =>
-        fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }).then(async res => {
-          if (!res.ok) throw new Error(`Falha em ${url}`);
-          return res.json().catch(() => ({}));
-        })
-      ));
-      toast.success("✅ Webhooks disparados! Aguardando retorno das imagens...");
-    } catch (e) {
-      console.error(e);
-      toast.error("⚠️ Alguns webhooks podem ter falhado. Verifique o console.");
-    }
-    // Nota: setIsUnifiedFiring(true) permanece true até a imagem chegar via evento
-  };
 
   return (
     <SafeErrorBoundary>
@@ -1932,400 +1815,346 @@ export default function UnifiedAdGeneratorCopy() {
           </Card>
         </SafeErrorBoundary>
 
-        {/* ===== BLOCO N8N: Configuração de Webhooks e Testes ===== */}
-        <SafeErrorBoundary>
-          <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-cyan-50/80 backdrop-blur-sm">
-            <Collapsible open={showN8NConfig} onOpenChange={setShowN8NConfig}>
-              <CardHeader className="bg-gradient-to-r from-cyan-100/50 to-blue-100/50 border-b border-cyan-200/30">
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 shadow-lg">
-                        <Settings className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
-                          Configuração de Webhooks N8N
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Configure URLs para testes manuais via n8n
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {webhookTratamentoCombinado && (
-                        <Badge variant="secondary" className="bg-green-100 text-green-700">
-                          Conectado
-                        </Badge>
-                      )}
-                      <ChevronDown className={`h-4 w-4 transition-transform ${showN8NConfig ? 'rotate-180' : ''}`} />
-                    </div>
-                  </div>
-                </CollapsibleTrigger>
-              </CardHeader>
+        {/* ===== TOGGLE DE CONFIGURAÇÕES AVANÇADAS ===== */}
+        <div className="flex justify-end mb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowConfig(!showConfig)}
+            className="text-muted-foreground hover:text-primary gap-2 text-xs"
+          >
+            {showConfig ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                Ocultar Configurações
+              </>
+            ) : (
+              <>
+                <Settings className="h-4 w-4" />
+                Configurações Avançadas
+              </>
+            )}
+          </Button>
+        </div>
 
-              <CollapsibleContent>
-                <CardContent className="pt-6 space-y-6">
-                  {/* ✅ COMPONENTE COMPLETO DE WEBHOOKS (FILAS REDIS + OUTROS) */}
-                  <div className="mb-6">
-                    <N8NWebhooksUI
-                      webhooks={webhooks}
-                      onSave={saveWebhook}
-                      variant="full"
-                      isLoading={isLoading}
-                    />
-                  </div>
-
-                  {/* Testar Etapas Individualmente */}
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Bot className="h-4 w-4" />
-                      Testar Etapas Individualmente
-                    </h4>
-
-                    <div className="grid grid-cols-3 gap-3">
-                      {/* Etapa 1: Comando */}
-                      <div className={`p-3 rounded-lg border-2 space-y-2 ${step1.status === 'success' ? 'border-green-500 bg-green-50' :
-                        step1.status === 'error' ? 'border-red-500 bg-red-50' :
-                          step1.status === 'running' ? 'border-blue-500 bg-blue-50' :
-                            'border-muted'
-                        }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-purple-600" />
-                            <span className="font-medium text-xs">1. Comando</span>
+        {/* ===== BLOCOS DE CONFIGURAÇÃO (Container Colapsável) ===== */}
+        {showConfig && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+            {/* ===== BLOCO N8N: Configuração de Webhooks e Testes ===== */}
+            <SafeErrorBoundary>
+              <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-cyan-50/80 backdrop-blur-sm">
+                <Collapsible open={showN8NConfig} onOpenChange={setShowN8NConfig}>
+                  <CardHeader className="bg-gradient-to-r from-cyan-100/50 to-blue-100/50 border-b border-cyan-200/30">
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 shadow-lg">
+                            <Settings className="h-5 w-5 text-white" />
                           </div>
-                          <StatusIcon status={step1.status} />
+                          <div>
+                            <CardTitle className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                              Configuração de Webhooks N8N
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Configure URLs para testes manuais via n8n
+                            </p>
+                          </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-8 text-xs"
-                          onClick={executeStep1}
-                          disabled={step1.status === "running" || !webhookComandoUnificado || !formData.nome}
-                        >
-                          {step1.status === "running" ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <Play className="h-3 w-3 mr-1" />
+                        <div className="flex items-center gap-2">
+                          {webhookTratamentoCombinado && (
+                            <Badge variant="secondary" className="bg-green-100 text-green-700">
+                              Conectado
+                            </Badge>
                           )}
-                          Executar
-                        </Button>
-                        {step1.responseTime && (
-                          <p className="text-[10px] text-muted-foreground text-center">{(step1.responseTime / 1000).toFixed(1)}s</p>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${showN8NConfig ? 'rotate-180' : ''}`} />
+                        </div>
+                      </div>
+                    </CollapsibleTrigger>
+                  </CardHeader>
+
+                  <CollapsibleContent>
+                    <CardContent className="pt-6 space-y-6">
+                      {/* ✅ COMPONENTE COMPLETO DE WEBHOOKS (FILAS REDIS + OUTROS) */}
+                      <div className="mb-6">
+                        <N8NWebhooksUI
+                          webhooks={webhooks}
+                          onSave={saveWebhook}
+                          variant="full"
+                          isLoading={isLoading}
+                        />
+                      </div>
+
+                      {/* Testar Etapas Individualmente */}
+                      <div className="border-t pt-4">
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <Bot className="h-4 w-4" />
+                          Testar Etapas Individualmente
+                        </h4>
+
+                        <div className="grid grid-cols-3 gap-3">
+                          {/* Etapa 1: Comando */}
+                          <div className={`p-3 rounded-lg border-2 space-y-2 ${step1.status === 'success' ? 'border-green-500 bg-green-50' :
+                            step1.status === 'error' ? 'border-red-500 bg-red-50' :
+                              step1.status === 'running' ? 'border-blue-500 bg-blue-50' :
+                                'border-muted'
+                            }`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                                <span className="font-medium text-xs">1. Comando</span>
+                              </div>
+                              <StatusIcon status={step1.status} />
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full h-8 text-xs"
+                              onClick={executeStep1}
+                              disabled={step1.status === "running" || !webhookComandoUnificado || !formData.nome}
+                            >
+                              {step1.status === "running" ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <Play className="h-3 w-3 mr-1" />
+                              )}
+                              Executar
+                            </Button>
+                            {step1.responseTime && (
+                              <p className="text-[10px] text-muted-foreground text-center">{(step1.responseTime / 1000).toFixed(1)}s</p>
+                            )}
+                          </div>
+
+                          {/* Etapa 2: Copywriting */}
+                          <div className={`p-3 rounded-lg border-2 space-y-2 ${step2.status === 'success' ? 'border-green-500 bg-green-50' :
+                            step2.status === 'error' ? 'border-red-500 bg-red-50' :
+                              step2.status === 'running' ? 'border-blue-500 bg-blue-50' :
+                                'border-muted'
+                            }`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <FileText className="h-3.5 w-3.5 text-blue-600" />
+                                <span className="font-medium text-xs">2. Copywriting</span>
+                              </div>
+                              <StatusIcon status={step2.status} />
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full h-8 text-xs"
+                              onClick={executeStep2}
+                              disabled={step2.status === "running" || !webhookCopywriting || !formData.nome}
+                            >
+                              {step2.status === "running" ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <Play className="h-3 w-3 mr-1" />
+                              )}
+                              Executar
+                            </Button>
+                            {step2.responseTime && (
+                              <p className="text-[10px] text-muted-foreground text-center">{(step2.responseTime / 1000).toFixed(1)}s</p>
+                            )}
+                          </div>
+
+                          {/* Etapa 3: Gerar 8 Cenas */}
+                          <div className={`p-3 rounded-lg border-2 space-y-2 ${isTestingParallel ? 'border-blue-500 bg-blue-50' :
+                            parallelTestProgress.completed === 8 ? 'border-green-500 bg-green-50' :
+                              parallelTestProgress.failed > 0 && !isTestingParallel ? 'border-orange-500 bg-orange-50' :
+                                'border-muted'
+                            }`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <Zap className="h-3.5 w-3.5 text-green-600" />
+                                <span className="font-medium text-xs">3. Gerar 8 Cenas</span>
+                              </div>
+                              {isTestingParallel ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                              ) : parallelTestProgress.completed === 8 ? (
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              ) : parallelTestProgress.failed > 0 ? (
+                                <AlertCircle className="h-4 w-4 text-orange-500" />
+                              ) : (
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full h-8 text-xs"
+                              onClick={testParallelWebhook}
+                              disabled={isTestingParallel || !webhookTratamentoCombinado || productImages.length === 0 || !formData.nome}
+                            >
+                              {isTestingParallel ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <Send className="h-3 w-3 mr-1" />
+                              )}
+                              Enviar
+                            </Button>
+                            {isTestingParallel && (
+                              <p className="text-[10px] text-muted-foreground text-center">
+                                {parallelTestProgress.completed + parallelTestProgress.failed}/{parallelTestProgress.total}
+                              </p>
+                            )}
+                            {!isTestingParallel && parallelTestProgress.completed > 0 && (
+                              <p className="text-[10px] text-muted-foreground text-center">
+                                ✓ {parallelTestProgress.completed} | ✗ {parallelTestProgress.failed}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Toggle compressão */}
+                        <div className="flex items-center justify-between p-2 mt-3 rounded-lg bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <Shrink className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm">Comprimir imagens antes de enviar</span>
+                          </div>
+                          <Switch
+                            checked={enableCompression}
+                            onCheckedChange={setEnableCompression}
+                          />
+                        </div>
+
+                        {/* 📡 Indicador de Conexão Broadcast */}
+                        <div className={`flex items-center justify-between p-2 mt-2 rounded-lg ${isBroadcastConnected ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                          }`}>
+                          <div className="flex items-center gap-2">
+                            <div className={`h-2 w-2 rounded-full ${isBroadcastConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                            <span className="text-xs font-medium">
+                              {isBroadcastConnected ? '🔌 Conectado ao Broadcast' : '❌ Desconectado'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">
+                            {debugState?.messagesReceived || 0} msgs
+                          </span>
+                        </div>
+
+                        {/* Indicador de Progresso do Batch */}
+                        {activeBatchProgress && (
+                          <div className="p-2 mt-2 rounded-lg bg-blue-50 border border-blue-200">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-blue-700">
+                                📥 Recebendo: {activeBatchProgress.productName}
+                              </span>
+                              <span className="text-[10px] text-blue-600">
+                                {activeBatchProgress.current}/{activeBatchProgress.total}
+                              </span>
+                            </div>
+                            <Progress value={(activeBatchProgress.current / activeBatchProgress.total) * 100} className="h-1" />
+                          </div>
+                        )}
+
+                        {/* Indicador de Upscale em Progresso */}
+                        {upscaleProgress.isProcessing && (
+                          <div className="p-2 mt-2 rounded-lg bg-amber-50 border border-amber-200">
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-3 w-3 animate-spin text-amber-600" />
+                              <span className="text-xs text-amber-700">
+                                📈 Upscale {upscaleProgress.currentImage}/{upscaleProgress.totalImages}: {upscaleProgress.sceneType}
+                              </span>
+                            </div>
+                          </div>
                         )}
                       </div>
 
-                      {/* Etapa 2: Copywriting */}
-                      <div className={`p-3 rounded-lg border-2 space-y-2 ${step2.status === 'success' ? 'border-green-500 bg-green-50' :
-                        step2.status === 'error' ? 'border-red-500 bg-red-50' :
-                          step2.status === 'running' ? 'border-blue-500 bg-blue-50' :
-                            'border-muted'
-                        }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <FileText className="h-3.5 w-3.5 text-blue-600" />
-                            <span className="font-medium text-xs">2. Copywriting</span>
-                          </div>
-                          <StatusIcon status={step2.status} />
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-8 text-xs"
-                          onClick={executeStep2}
-                          disabled={step2.status === "running" || !webhookCopywriting || !formData.nome}
-                        >
-                          {step2.status === "running" ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <Play className="h-3 w-3 mr-1" />
-                          )}
-                          Executar
-                        </Button>
-                        {step2.responseTime && (
-                          <p className="text-[10px] text-muted-foreground text-center">{(step2.responseTime / 1000).toFixed(1)}s</p>
-                        )}
-                      </div>
+                      {/* ✅ Imagens do N8N vão direto para a Galeria Principal (ProductImagesGrid) */}
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            </SafeErrorBoundary>
 
-                      {/* Etapa 3: Gerar 8 Cenas */}
-                      <div className={`p-3 rounded-lg border-2 space-y-2 ${isTestingParallel ? 'border-blue-500 bg-blue-50' :
-                        parallelTestProgress.completed === 8 ? 'border-green-500 bg-green-50' :
-                          parallelTestProgress.failed > 0 && !isTestingParallel ? 'border-orange-500 bg-orange-50' :
-                            'border-muted'
-                        }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Zap className="h-3.5 w-3.5 text-green-600" />
-                            <span className="font-medium text-xs">3. Gerar 8 Cenas</span>
-                          </div>
-                          {isTestingParallel ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                          ) : parallelTestProgress.completed === 8 ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          ) : parallelTestProgress.failed > 0 ? (
-                            <AlertCircle className="h-4 w-4 text-orange-500" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-8 text-xs"
-                          onClick={testParallelWebhook}
-                          disabled={isTestingParallel || !webhookTratamentoCombinado || productImages.length === 0 || !formData.nome}
-                        >
-                          {isTestingParallel ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <Send className="h-3 w-3 mr-1" />
-                          )}
-                          Enviar
-                        </Button>
-                        {isTestingParallel && (
-                          <p className="text-[10px] text-muted-foreground text-center">
-                            {parallelTestProgress.completed + parallelTestProgress.failed}/{parallelTestProgress.total}
-                          </p>
-                        )}
-                        {!isTestingParallel && parallelTestProgress.completed > 0 && (
-                          <p className="text-[10px] text-muted-foreground text-center">
-                            ✓ {parallelTestProgress.completed} | ✗ {parallelTestProgress.failed}
-                          </p>
-                        )}
-                      </div>
+            {/* ✅ BOTÃO MÁGICO "Acionar Agentes de Conversão" - SEMPRE VISÍVEL */}
+            <div className="hidden">
+              <Card className="glass-effect shadow-lg border-2 border-primary/30 bg-gradient-to-br from-violet-50/90 to-purple-50/80 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                        ⚡ Agentes de Conversão
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        ATLAS (Análise) → LYRA (Copy) → ORION (Imagens 8 Cenas)
+                      </p>
                     </div>
 
-                    {/* Toggle compressão */}
-                    <div className="flex items-center justify-between p-2 mt-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <Shrink className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm">Comprimir imagens antes de enviar</span>
-                      </div>
-                      <Switch
-                        checked={enableCompression}
-                        onCheckedChange={setEnableCompression}
+                    {/* MagicAgentButton */}
+                    <div className="w-full max-w-md">
+                      <MagicAgentButton
+                        onClick={handleMagicFlow}
+                        isExecuting={isMagicFlowExecuting}
+                        isValid={isFormValid && !!webhookComandoUnificado && !!webhookCopywriting && !!webhookTratamentoCombinado}
+                        missingFields={[
+                          ...missingFields,
+                          ...(!webhookComandoUnificado ? ['Webhook Comando (ATLAS)'] : []),
+                          ...(!webhookCopywriting ? ['Webhook Copy (LYRA)'] : []),
+                          ...(!webhookTratamentoCombinado ? ['Webhook Tratamento (ORION)'] : [])
+                        ]}
+                        currentStep={magicFlowCurrentStep}
                       />
                     </div>
 
-                    {/* 📡 Indicador de Conexão Broadcast */}
-                    <div className={`flex items-center justify-between p-2 mt-2 rounded-lg ${isBroadcastConnected ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-                      }`}>
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${isBroadcastConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                        <span className="text-xs font-medium">
-                          {isBroadcastConnected ? '🔌 Conectado ao Broadcast' : '❌ Desconectado'}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        {debugState?.messagesReceived || 0} msgs
-                      </span>
+                    {/* Botões secundários */}
+                    <div className="flex gap-3 flex-wrap justify-center mt-2">
+                      <Button
+                        onClick={() => setShowPreflightModal(true)}
+                        disabled={!isFormValid || isStarting || isMagicFlowExecuting}
+                        size="sm"
+                        variant="outline"
+                        className="border-primary/50 text-primary hover:bg-primary/10"
+                      >
+                        <Rocket className="h-4 w-4 mr-2" />
+                        Automação Gemini (KITs)
+                      </Button>
+
+                      <Button
+                        onClick={startAIOnlyTest}
+                        disabled={!isFormValid || isStarting || isMagicFlowExecuting}
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-500/50 text-amber-700 hover:bg-amber-50"
+                      >
+                        <Brain className="h-4 w-4 mr-2" />
+                        🧪 Testar AI Only
+                      </Button>
                     </div>
 
-                    {/* Indicador de Progresso do Batch */}
-                    {activeBatchProgress && (
-                      <div className="p-2 mt-2 rounded-lg bg-blue-50 border border-blue-200">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-blue-700">
-                            📥 Recebendo: {activeBatchProgress.productName}
-                          </span>
-                          <span className="text-[10px] text-blue-600">
-                            {activeBatchProgress.current}/{activeBatchProgress.total}
-                          </span>
-                        </div>
-                        <Progress value={(activeBatchProgress.current / activeBatchProgress.total) * 100} className="h-1" />
-                      </div>
-                    )}
-
-                    {/* Indicador de Upscale em Progresso */}
-                    {upscaleProgress.isProcessing && (
-                      <div className="p-2 mt-2 rounded-lg bg-amber-50 border border-amber-200">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-3 w-3 animate-spin text-amber-600" />
-                          <span className="text-xs text-amber-700">
-                            📈 Upscale {upscaleProgress.currentImage}/{upscaleProgress.totalImages}: {upscaleProgress.sceneType}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground text-center max-w-md">
+                      <span className="text-primary font-medium">⚡ Acionar Agentes:</span> Executa os 3 agentes N8N em sequência.
+                      <span className="text-amber-600 font-medium ml-1">🧪 AI Only:</span> Apenas textos sem imagens.
+                    </p>
                   </div>
-
-                  {/* ✅ Imagens do N8N vão direto para a Galeria Principal (ProductImagesGrid) */}
                 </CardContent>
-              </CollapsibleContent>
-            </Collapsible>
-          </Card>
-        </SafeErrorBoundary>
-
-        {/* ✅ BOTÃO MÁGICO "Acionar Agentes de Conversão" - SEMPRE VISÍVEL */}
-        <Card className="glass-effect shadow-lg border-2 border-primary/30 bg-gradient-to-br from-violet-50/90 to-purple-50/80 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-center">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                  ⚡ Agentes de Conversão
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  ATLAS (Análise) → LYRA (Copy) → ORION (Imagens 8 Cenas)
-                </p>
-              </div>
-
-              {/* MagicAgentButton */}
-              <div className="w-full max-w-md">
-                <MagicAgentButton
-                  onClick={handleMagicFlow}
-                  isExecuting={isMagicFlowExecuting}
-                  isValid={isFormValid && !!webhookComandoUnificado && !!webhookCopywriting && !!webhookTratamentoCombinado}
-                  missingFields={[
-                    ...missingFields,
-                    ...(!webhookComandoUnificado ? ['Webhook Comando (ATLAS)'] : []),
-                    ...(!webhookCopywriting ? ['Webhook Copy (LYRA)'] : []),
-                    ...(!webhookTratamentoCombinado ? ['Webhook Tratamento (ORION)'] : [])
-                  ]}
-                  currentStep={magicFlowCurrentStep}
-                />
-              </div>
-
-              {/* Botões secundários */}
-              <div className="flex gap-3 flex-wrap justify-center mt-2">
-                <Button
-                  onClick={() => setShowPreflightModal(true)}
-                  disabled={!isFormValid || isStarting || isMagicFlowExecuting}
-                  size="sm"
-                  variant="outline"
-                  className="border-primary/50 text-primary hover:bg-primary/10"
-                >
-                  <Rocket className="h-4 w-4 mr-2" />
-                  Automação Gemini (KITs)
-                </Button>
-
-                <Button
-                  onClick={startAIOnlyTest}
-                  disabled={!isFormValid || isStarting || isMagicFlowExecuting}
-                  size="sm"
-                  variant="outline"
-                  className="border-amber-500/50 text-amber-700 hover:bg-amber-50"
-                >
-                  <Brain className="h-4 w-4 mr-2" />
-                  🧪 Testar AI Only
-                </Button>
-              </div>
-
-              <p className="text-xs text-muted-foreground text-center max-w-md">
-                <span className="text-primary font-medium">⚡ Acionar Agentes:</span> Executa os 3 agentes N8N em sequência.
-                <span className="text-amber-600 font-medium ml-1">🧪 AI Only:</span> Apenas textos sem imagens.
-              </p>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* ✅ BOTÃO WEBHOOK UNIFICADO 4 - NOVO */}
-        <Card className="glass-effect shadow-lg border-2 border-indigo-500/30 bg-gradient-to-br from-indigo-50/90 to-blue-50/80 backdrop-blur-sm mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-center">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-                  🚀 Disparador Unificado (3 Webhooks)
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Aciona até 3 fluxos N8N simultaneamente com os dados do produto
-                </p>
-              </div>
 
-              <div className="w-full max-w-md">
-                <Button
-                  onClick={handleUnified4Fire}
-                  disabled={isUnifiedFiring}
-                  className={`w-full h-14 text-lg font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] ${isUnifiedFiring
-                    ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                    : "bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white"
-                    }`}
-                >
-                  {isUnifiedFiring ? (
-                    <>
-                      <Loader2 className="mr-2 h-6 w-6 animate-spin text-indigo-500" />
-                      AGUARDANDO IMAGENS...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="mr-2 h-6 w-6 text-yellow-300 fill-yellow-300" />
-                      DISPARAR 3 WEBHOOKS
-                    </>
-                  )}
-                </Button>
-              </div>
 
-              {/* ✅ CONFIGURAÇÃO DOS 3 WEBHOOKS */}
-              <div className="w-full max-w-2xl mt-4">
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full flex items-center gap-2 text-indigo-700 hover:bg-indigo-50">
-                      <Settings className="h-4 w-4" />
-                      Configurar os 3 Webhooks
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="space-y-3 mt-4 p-4 bg-white/50 rounded-lg border border-indigo-100">
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold text-indigo-900">Webhook URL 1</Label>
-                        <Input
-                          placeholder="https://seu-n8n.app/webhook/url-1"
-                          value={webhooks['n8n_unified_4_url_1'] || ''}
-                          onChange={(e) => saveWebhook('n8n_unified_4_url_1', e.target.value)}
-                          className="bg-white/80 border-indigo-200 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold text-indigo-900">Webhook URL 2</Label>
-                        <Input
-                          placeholder="https://seu-n8n.app/webhook/url-2"
-                          value={webhooks['n8n_unified_4_url_2'] || ''}
-                          onChange={(e) => saveWebhook('n8n_unified_4_url_2', e.target.value)}
-                          className="bg-white/80 border-indigo-200 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold text-indigo-900">Webhook URL 3</Label>
-                        <Input
-                          placeholder="https://seu-n8n.app/webhook/url-3"
-                          value={webhooks['n8n_unified_4_url_3'] || ''}
-                          onChange={(e) => saveWebhook('n8n_unified_4_url_3', e.target.value)}
-                          className="bg-white/80 border-indigo-200 text-xs"
-                        />
-                      </div>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Modal Pre-Flight Check */}
+            <PreflightCheckModal
+              isOpen={showPreflightModal}
+              onClose={() => setShowPreflightModal(false)}
+              onProceed={() => {
+                setWasAutomationStarted(true);
+                startAutomation();
+              }}
+              productId={productId}
+              images={productImages}
+            />
 
-        {/* Modal Pre-Flight Check */}
-        <PreflightCheckModal
-          isOpen={showPreflightModal}
-          onClose={() => setShowPreflightModal(false)}
-          onProceed={() => {
-            setWasAutomationStarted(true);
-            startAutomation();
-          }}
-          productId={productId}
-          images={productImages}
-        />
+            {/* Indicador de Progresso da Automação - Só aparece se automação foi iniciada */}
+            {(wasAutomationStarted || isAutomationRunning || isAutomationComplete) && (
+              <AutomationProgressIndicator steps={steps} isRunning={isAutomationRunning} />
+            )}
 
-        {/* Indicador de Progresso da Automação - Só aparece se automação foi iniciada */}
-        {(wasAutomationStarted || isAutomationRunning || isAutomationComplete) && (
-          <AutomationProgressIndicator steps={steps} isRunning={isAutomationRunning} />
-        )}
+            {/* Seção de Prompts Midjourney/DALL-E */}
+            {Object.keys(midjourneyPrompts).length > 0 && (
+              <MidjourneyPromptsSection prompts={midjourneyPrompts} />
+            )}
 
-        {/* Seção de Prompts Midjourney/DALL-E */}
-        {Object.keys(midjourneyPrompts).length > 0 && (
-          <MidjourneyPromptsSection prompts={midjourneyPrompts} />
-        )}
-
-        {/* Gerador de Copywriting - OCULTADO por solicitação do usuário */}
-        {/* 
+            {/* Gerador de Copywriting - OCULTADO por solicitação do usuário */}
+            {/* 
         {!isAutomationRunning && !copywritingData && (
           <SafeErrorBoundary>
             <CopywritingGenerator
@@ -2356,187 +2185,196 @@ export default function UnifiedAdGeneratorCopy() {
         )}
         */}
 
-        {/* Gerador de Background - Gemini AI - OCULTADO (usando n8n) */}
-        {isAutomationRunning && automationStep === 'gemini' && (
-          <div className="hidden">
-            <GeminiBackgroundGenerator
-              images={productImages}
-              productName={formData.nome}
-              productId={productId}
-              dimensions={{
-                altura: formData.altura,
-                largura: formData.largura,
-                profundidade: formData.profundidade,
-                peso_bruto: formData.peso_bruto
-              }}
-              autoGenerate={true}
-              simplifiedView={true}
-              onComplete={handleGeminiComplete}
-            />
+            {/* Gerador de Background - Gemini AI - OCULTADO (usando n8n) */}
+            {isAutomationRunning && automationStep === 'gemini' && (
+              <div className="hidden">
+                <GeminiBackgroundGenerator
+                  images={productImages}
+                  productName={formData.nome}
+                  productId={productId}
+                  dimensions={{
+                    altura: formData.altura,
+                    largura: formData.largura,
+                    profundidade: formData.profundidade,
+                    peso_bruto: formData.peso_bruto
+                  }}
+                  autoGenerate={true}
+                  simplifiedView={true}
+                  onComplete={handleGeminiComplete}
+                />
+              </div>
+            )}
+
+            {/* Templates de Marketing Estilo Canva */}
+            <SafeErrorBoundary>
+              <Collapsible open={expandedCanvaTemplates} onOpenChange={setExpandedCanvaTemplates}>
+                <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-green-50/80 backdrop-blur-sm overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-green-100/50 to-teal-100/50 border-b border-green-200/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-teal-500 shadow-lg">
+                          <Brain className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">
+                            Templates de Marketing Estilo Canva
+                          </CardTitle>
+                          {!expandedCanvaTemplates && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Gere imagens profissionais automaticamente com seus dados de IA
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
+                          Auto-Generate
+                        </Badge>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            {expandedCanvaTemplates ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CollapsibleContent forceMount className={!expandedCanvaTemplates ? "hidden" : ""}>
+                    <CardContent className="pt-6 space-y-6">
+                      <CanvaStyleTemplateGenerator
+                        productId={productId}
+                        productName={formData.nome || 'Novo Produto'}
+                        aiImages={originalHostedUrls.length > 0 ? originalHostedUrls : (hostedAIImages.length > 0 ? hostedAIImages : productImages)}
+                        unifiedData={unifiedData}
+                        logoUrl={brandSettings?.logo_url || undefined}
+                      />
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            </SafeErrorBoundary>
+
+            {/* Gerador de Showcases de Produto */}
+            <SafeErrorBoundary>
+              <div className="hidden">
+                <Collapsible open={expandedShowcase} onOpenChange={setExpandedShowcase}>
+                  <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-orange-50/80 backdrop-blur-sm overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-orange-100/50 to-yellow-100/50 border-b border-orange-200/30">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-500 shadow-lg">
+                            <Grid3x3 className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-xl font-bold bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
+                              Showcases de Produto
+                            </CardTitle>
+                            {!expandedShowcase && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Composições visuais profissionais com imagens em círculos
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200">
+                            Auto-Generate
+                          </Badge>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              {expandedShowcase ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </Button>
+                          </CollapsibleTrigger>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CollapsibleContent forceMount className={!expandedShowcase ? "hidden" : ""}>
+                      <CardContent className="pt-6">
+                        <ProductShowcaseGenerator
+                          productId={productId}
+                          productName={formData.nome || 'Novo Produto'}
+                          productImages={productImages}
+                          onImagesGenerated={() => { }}
+                        />
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              </div>
+            </SafeErrorBoundary>
+
+            {/* Sistema de Automação IA */}
+            <SafeErrorBoundary>
+              <div className="hidden">
+                <AIImageAutoProcessor
+                  productId={productId}
+                  productName={formData.nome || 'Novo Produto'}
+                  isExpanded={expandedAutoProcessor}
+                  onToggleExpanded={() => setExpandedAutoProcessor(prev => !prev)}
+                />
+              </div>
+            </SafeErrorBoundary>
+
+            {/* Gerador Automático de KITs */}
+            {isAutomationRunning && automationStep === 'kits' && (
+              <div className="hidden">
+                <CloudinaryProductTransform
+                  productId={productId}
+                  productSku={formData.sku || 'UNIFIED-AD-GEN'}
+                  productName={formData.nome || 'Novo Produto'}
+                  images={productImages}
+                  autoGenerate={true}
+                  onComplete={() => { }}
+                />
+              </div>
+            )}
+
+            {/* Planilha de 20 Anúncios Premium */}
+            <SafeErrorBoundary>
+              <div className="flex justify-center my-4">
+                <PremiumAdsExportButton product={product} />
+              </div>
+            </SafeErrorBoundary>
+
+            {/* Tabela de Preços */}
+            {selectedPricing !== 'none' && formData.preco_custo > 0 && (
+              <SafeErrorBoundary>
+                <ProductTable
+                  products={[{
+                    ...product,
+                    preco_custo: formData.preco_custo,
+                    peso_liquido: formData.peso_liquido
+                  }]}
+                  onEditProduct={() => { }}
+                  onViewProduct={() => { }}
+                  updateSingleProduct={() => { }}
+                  profitMargin={profitMargin}
+                  taxRate={taxRate}
+                  selectedPricing={selectedPricing}
+                  storeCommission={storeCommission}
+                />
+              </SafeErrorBoundary>
+            )}
+
+            {/* Configurações de Precificação */}
+            <SafeErrorBoundary>
+              <PricingControls
+                profitMargin={profitMargin}
+                taxRate={taxRate}
+                onProfitMarginChange={setProfitMargin}
+                onTaxRateChange={setTaxRate}
+                selectedPricing={selectedPricing}
+                onPricingChange={setSelectedPricing}
+                storeCommission={storeCommission}
+                onStoreCommissionChange={setStoreCommission}
+              />
+            </SafeErrorBoundary>
+
+            {/* Fim do Container de Configurações */}
           </div>
         )}
 
-        {/* Templates de Marketing Estilo Canva */}
-        <SafeErrorBoundary>
-          <Collapsible open={expandedCanvaTemplates} onOpenChange={setExpandedCanvaTemplates}>
-            <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-green-50/80 backdrop-blur-sm overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-green-100/50 to-teal-100/50 border-b border-green-200/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-teal-500 shadow-lg">
-                      <Brain className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">
-                        Templates de Marketing Estilo Canva
-                      </CardTitle>
-                      {!expandedCanvaTemplates && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Gere imagens profissionais automaticamente com seus dados de IA
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                      Auto-Generate
-                    </Badge>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        {expandedCanvaTemplates ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                    </CollapsibleTrigger>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CollapsibleContent forceMount className={!expandedCanvaTemplates ? "hidden" : ""}>
-                <CardContent className="pt-6 space-y-6">
-                  <CanvaStyleTemplateGenerator
-                    productId={productId}
-                    productName={formData.nome || 'Novo Produto'}
-                    aiImages={originalHostedUrls.length > 0 ? originalHostedUrls : (hostedAIImages.length > 0 ? hostedAIImages : productImages)}
-                    unifiedData={unifiedData}
-                    logoUrl={brandSettings?.logo_url || undefined}
-                  />
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        </SafeErrorBoundary>
-
-        {/* Gerador de Showcases de Produto */}
-        <SafeErrorBoundary>
-          <Collapsible open={expandedShowcase} onOpenChange={setExpandedShowcase}>
-            <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-orange-50/80 backdrop-blur-sm overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-orange-100/50 to-yellow-100/50 border-b border-orange-200/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-500 shadow-lg">
-                      <Grid3x3 className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl font-bold bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
-                        Showcases de Produto
-                      </CardTitle>
-                      {!expandedShowcase && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Composições visuais profissionais com imagens em círculos
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200">
-                      Auto-Generate
-                    </Badge>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        {expandedShowcase ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                    </CollapsibleTrigger>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CollapsibleContent forceMount className={!expandedShowcase ? "hidden" : ""}>
-                <CardContent className="pt-6">
-                  <ProductShowcaseGenerator
-                    productId={productId}
-                    productName={formData.nome || 'Novo Produto'}
-                    productImages={productImages}
-                    onImagesGenerated={() => { }}
-                  />
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        </SafeErrorBoundary>
-
-        {/* Sistema de Automação IA */}
-        <SafeErrorBoundary>
-          <AIImageAutoProcessor
-            productId={productId}
-            productName={formData.nome || 'Novo Produto'}
-            isExpanded={expandedAutoProcessor}
-            onToggleExpanded={() => setExpandedAutoProcessor(prev => !prev)}
-          />
-        </SafeErrorBoundary>
-
-        {/* Gerador Automático de KITs */}
-        {isAutomationRunning && automationStep === 'kits' && (
-          <div className="hidden">
-            <CloudinaryProductTransform
-              productId={productId}
-              productSku={formData.sku || 'UNIFIED-AD-GEN'}
-              productName={formData.nome || 'Novo Produto'}
-              images={productImages}
-              autoGenerate={true}
-              onComplete={() => { }}
-            />
-          </div>
-        )}
-
-        {/* Planilha de 20 Anúncios Premium */}
-        <SafeErrorBoundary>
-          <div className="flex justify-center my-4">
-            <PremiumAdsExportButton product={product} />
-          </div>
-        </SafeErrorBoundary>
-
-        {/* Tabela de Preços */}
-        {selectedPricing !== 'none' && formData.preco_custo > 0 && (
-          <SafeErrorBoundary>
-            <ProductTable
-              products={[{
-                ...product,
-                preco_custo: formData.preco_custo,
-                peso_liquido: formData.peso_liquido
-              }]}
-              onEditProduct={() => { }}
-              onViewProduct={() => { }}
-              updateSingleProduct={() => { }}
-              profitMargin={profitMargin}
-              taxRate={taxRate}
-              selectedPricing={selectedPricing}
-              storeCommission={storeCommission}
-            />
-          </SafeErrorBoundary>
-        )}
-
-        {/* Configurações de Precificação */}
-        <SafeErrorBoundary>
-          <PricingControls
-            profitMargin={profitMargin}
-            taxRate={taxRate}
-            onProfitMarginChange={setProfitMargin}
-            onTaxRateChange={setTaxRate}
-            selectedPricing={selectedPricing}
-            onPricingChange={setSelectedPricing}
-            storeCommission={storeCommission}
-            onStoreCommissionChange={setStoreCommission}
-          />
-        </SafeErrorBoundary>
       </ProductDetailsLayout>
     </SafeErrorBoundary>
   );

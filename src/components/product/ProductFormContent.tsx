@@ -82,23 +82,25 @@ export const ProductFormContent = ({
       {/* ❌ REMOVIDO: ProductContextFields - IA usa apenas Comando Unificado + Copywriting */}
 
       {/* Comando Unificado (5 em 1) - Usa dados do formData inseridos pelo usuário */}
-      <CompactAIDescriptionEnhancer
-        productId={product?.id}
-        productSku={formData.sku}
-        productName={formData.nome}
-        shortDescription={formData.descricao_curta}
-        onUpdateDescription={onUpdateDescription}
-        isAutomationRunning={isAutomationRunning}
-        automationStep={automationStep}
-        copywritingData={copywritingData}
-        externalUnifiedData={unifiedCommandsData}
-        onExecuteWebhookComando={onExecuteWebhookComando}
-        onExecuteWebhookCopywriting={onExecuteWebhookCopywriting}
-        isLoadingComando={isLoadingComando}
-        isLoadingCopywriting={isLoadingCopywriting}
-        webhookComandoConfigured={webhookComandoConfigured}
-        webhookCopywritingConfigured={webhookCopywritingConfigured}
-      />
+      <div className="hidden">
+        <CompactAIDescriptionEnhancer
+          productId={product?.id}
+          productSku={formData.sku}
+          productName={formData.nome}
+          shortDescription={formData.descricao_curta}
+          onUpdateDescription={onUpdateDescription}
+          isAutomationRunning={isAutomationRunning}
+          automationStep={automationStep}
+          copywritingData={copywritingData}
+          externalUnifiedData={unifiedCommandsData}
+          onExecuteWebhookComando={onExecuteWebhookComando}
+          onExecuteWebhookCopywriting={onExecuteWebhookCopywriting}
+          isLoadingComando={isLoadingComando}
+          isLoadingCopywriting={isLoadingCopywriting}
+          webhookComandoConfigured={webhookComandoConfigured}
+          webhookCopywritingConfigured={webhookCopywritingConfigured}
+        />
+      </div>
     </CardContent>
   );
 };

@@ -17,9 +17,9 @@ interface AIEnhancerHeaderProps {
   webhookCopywritingConfigured?: boolean;
 }
 
-export const AIEnhancerHeader = ({ 
-  isLoading, 
-  shortDescription, 
+export const AIEnhancerHeader = ({
+  isLoading,
+  shortDescription,
   onGenerateUnifiedCommands,
   hasPersistedResults,
   onExecuteWebhookComando,
@@ -45,7 +45,7 @@ export const AIEnhancerHeader = ({
             Gera todos os comandos de uma só vez
           </p>
         </div>
-        
+
         {/* Badge indicando status dos resultados */}
         {hasPersistedResults && (
           <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
@@ -54,83 +54,11 @@ export const AIEnhancerHeader = ({
           </Badge>
         )}
       </div>
-      
+
       <div className="flex gap-2">
-        {/* Botão Webhook Comando (era Gemini) */}
-        {onExecuteWebhookComando && (
-          <Button
-            onClick={() => {
-              console.log('📡 Clique no botão Comando (n8n) - shortDescription:', shortDescription);
-              onExecuteWebhookComando();
-            }}
-            disabled={isLoadingComando || isDisabled || !webhookComandoConfigured}
-            variant="outline"
-            className="border-purple-300 text-purple-700 hover:bg-purple-50"
-            title={!webhookComandoConfigured ? "Configure o webhook na seção N8N" : ""}
-          >
-            {isLoadingComando ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Executando...
-              </>
-            ) : (
-              <>
-                📡 Comando (n8n)
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Botão Webhook Copywriting (era OpenAI) */}
-        {onExecuteWebhookCopywriting && (
-          <Button
-            onClick={() => {
-              console.log('📝 Clique no botão Copywriting (n8n) - shortDescription:', shortDescription);
-              onExecuteWebhookCopywriting();
-            }}
-            disabled={isLoadingCopywriting || isDisabled || !webhookCopywritingConfigured}
-            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg"
-            title={!webhookCopywritingConfigured ? "Configure o webhook na seção N8N" : ""}
-          >
-            {isLoadingCopywriting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Executando...
-              </>
-            ) : (
-              <>
-                📝 Copywriting (n8n)
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Botão padrão (fallback) - quando nenhum webhook está configurado */}
-        {!onExecuteWebhookComando && !onExecuteWebhookCopywriting && (
-          <Button
-            onClick={onGenerateUnifiedCommands}
-            disabled={isLoading || isDisabled}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Gerando...
-              </>
-            ) : hasPersistedResults ? (
-              <>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Gerar Novamente
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Gerar Todos
-              </>
-            )}
-          </Button>
-        )}
+        {/* Botões de disparo manual removidos por solicitação do usuário - disparo agora é 100% automático */}
       </div>
+
     </div>
   );
 };

@@ -25,6 +25,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import {
+  TechHeroAvatar,
+  GamerGirlAvatar,
+  FoxMascotAvatar,
+  FairyTechAvatar
+} from './GameAvatars';
 
 // ============================================
 // TIPOS E CONFIGURAÇÕES
@@ -33,7 +39,7 @@ import { toast } from 'sonner';
 export type PackageType = 'start' | 'pro' | 'expert' | 'brand';
 export type PackageStatus = 'idle' | 'running' | 'success' | 'error';
 
-interface VisualPackage {
+export interface VisualPackage {
   id: PackageType;
   name: string;
   subtitle: string;
@@ -43,7 +49,7 @@ interface VisualPackage {
   bgGradient: string;
   borderColor: string;
   icon: React.ElementType;
-  avatar: string;
+  AvatarComponent: React.ComponentType<{ size?: number; animate?: boolean; className?: string }>;
   popular?: boolean;
   images: {
     fundoBranco: number;
@@ -52,13 +58,14 @@ interface VisualPackage {
     comPessoas: number;
     magicas: number;
   };
+  totalImages: number;
   includes: string[];
 }
 
-const VISUAL_PACKAGES: VisualPackage[] = [
+export const VISUAL_PACKAGES: VisualPackage[] = [
   {
     id: 'start',
-    name: 'Visual Start',
+    name: 'Visual Start com Atlas',
     subtitle: 'Ideal para criar 1 anúncio profissional completo',
     description: '5 imagens profissionais',
     color: 'text-green-500',
@@ -66,7 +73,7 @@ const VISUAL_PACKAGES: VisualPackage[] = [
     bgGradient: 'from-green-500/10 to-green-500/5',
     borderColor: 'border-green-500/50 hover:border-green-500/70',
     icon: Sparkles,
-    avatar: '🌱',
+    AvatarComponent: TechHeroAvatar,
     images: {
       fundoBranco: 1,
       ambientada: 1,
@@ -74,11 +81,12 @@ const VISUAL_PACKAGES: VisualPackage[] = [
       comPessoas: 0,
       magicas: 3
     },
+    totalImages: 5,
     includes: ['Conteúdo Estratégico', 'SEO & Descoberta', 'Estratégia Comercial']
   },
   {
     id: 'pro',
-    name: 'Visual Pro',
+    name: 'Visual Pro com Lyra',
     subtitle: 'Ideal para um anúncio mais forte e competitivo',
     description: '6 imagens profissionais',
     color: 'text-blue-500',
@@ -86,7 +94,7 @@ const VISUAL_PACKAGES: VisualPackage[] = [
     bgGradient: 'from-blue-500/10 to-blue-500/5',
     borderColor: 'border-blue-500/50 hover:border-blue-500/70',
     icon: Zap,
-    avatar: '⚡',
+    AvatarComponent: GamerGirlAvatar,
     images: {
       fundoBranco: 1,
       ambientada: 1,
@@ -94,11 +102,12 @@ const VISUAL_PACKAGES: VisualPackage[] = [
       comPessoas: 0,
       magicas: 4
     },
+    totalImages: 6,
     includes: ['Conteúdo Estratégico', 'SEO & Descoberta', 'Estratégia Comercial']
   },
   {
     id: 'expert',
-    name: 'Visual Expert Scale',
+    name: 'Visual Expert Scale com Orion',
     subtitle: 'Ideal para criar variações e escalar anúncios',
     description: '9 imagens profissionais',
     color: 'text-violet-500',
@@ -106,7 +115,7 @@ const VISUAL_PACKAGES: VisualPackage[] = [
     bgGradient: 'from-violet-500/10 to-violet-500/5',
     borderColor: 'border-violet-500/50 hover:border-violet-500/70',
     icon: Crown,
-    avatar: '👑',
+    AvatarComponent: FoxMascotAvatar,
     popular: true,
     images: {
       fundoBranco: 1,
@@ -115,19 +124,20 @@ const VISUAL_PACKAGES: VisualPackage[] = [
       comPessoas: 0,
       magicas: 6
     },
+    totalImages: 8,
     includes: ['Conteúdo Estratégico', 'SEO & Descoberta', 'Estratégia Comercial']
   },
   {
     id: 'brand',
-    name: 'Visual Brand Pro Expert',
-    subtitle: 'Ideal para escalar, dominar o visual e construir marca',
+    name: 'Visual Brand Pro Expert com Lucy',
+    subtitle: 'Ideal para escalar, criar Variação e dominar o visual e construir marca',
     description: '12 imagens profissionais',
     color: 'text-orange-500',
     glowColor: 'hsl(25, 100%, 50%)',
     bgGradient: 'from-orange-500/10 to-orange-500/5',
     borderColor: 'border-orange-500/50 hover:border-orange-500/70',
     icon: Rocket,
-    avatar: '🚀',
+    AvatarComponent: FairyTechAvatar,
     images: {
       fundoBranco: 1,
       ambientada: 1,
@@ -135,6 +145,7 @@ const VISUAL_PACKAGES: VisualPackage[] = [
       comPessoas: 1,
       magicas: 8
     },
+    totalImages: 12,
     includes: ['Conteúdo Estratégico', 'SEO & Descoberta', 'Estratégia Comercial']
   }
 ];
@@ -150,54 +161,55 @@ interface PackageAvatarProps {
 }
 
 const PackageAvatar = ({ pkg, status, size = 'md' }: PackageAvatarProps) => {
-  const sizeClasses = {
-    sm: 'w-12 h-12 text-2xl',
-    md: 'w-16 h-16 text-3xl',
-    lg: 'w-20 h-20 text-4xl'
+  const sizeMap = {
+    sm: 72, // 2.0x of 36
+    md: 84, // 2.0x of 42
+    lg: 112 // 2.0x of 56
   };
 
-  const pulseAnimation = status === 'running'
-    ? 'animate-pulse'
-    : status === 'success'
-      ? 'animate-bounce'
-      : '';
+  const AvatarComponent = pkg.AvatarComponent;
 
   return (
     <div className="relative">
       <div
         className={cn(
-          'rounded-full flex items-center justify-center transition-all duration-300',
-          sizeClasses[size],
-          pulseAnimation,
-          status === 'running' && 'ring-4 ring-offset-2',
+          'rounded-full flex items-center justify-center transition-all duration-300 overflow-hidden',
+          status === 'running' && 'ring-4 ring-offset-2 scale-105',
           status === 'success' && 'ring-4 ring-green-500/50 ring-offset-2',
           status === 'error' && 'ring-4 ring-red-500/50 ring-offset-2'
         )}
         style={{
-          background: `linear-gradient(135deg, ${pkg.glowColor}20, ${pkg.glowColor}40)`,
+          background: `linear-gradient(135deg, ${pkg.glowColor}15, ${pkg.glowColor}30)`,
           boxShadow: status === 'running'
-            ? `0 0 30px ${pkg.glowColor}60`
-            : `0 0 20px ${pkg.glowColor}30`,
-          ringColor: status === 'running' ? pkg.glowColor : undefined
+            ? `0 0 35px ${pkg.glowColor}70, 0 0 0 4px ${pkg.glowColor}40`
+            : `0 0 20px ${pkg.glowColor}40`
         }}
       >
-        <span className={cn(
-          'transition-transform duration-300',
-          status === 'running' && 'scale-110'
-        )}>
-          {pkg.avatar}
-        </span>
+        <AvatarComponent
+          size={sizeMap[size]}
+          animate={status === 'running'}
+          className={cn(
+            'transition-all duration-300',
+            status === 'running' && 'scale-105',
+            status === 'idle' && 'hover:scale-105'
+          )}
+        />
       </div>
 
       {/* Status Badge */}
       {status === 'running' && (
-        <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1">
+        <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1.5 shadow-lg">
           <Loader2 className="w-3 h-3 text-white animate-spin" />
         </div>
       )}
       {status === 'success' && (
-        <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1">
+        <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1.5 shadow-lg">
           <CheckCircle2 className="w-3 h-3 text-white" />
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="absolute -bottom-1 -right-1 bg-red-500 rounded-full p-1.5 shadow-lg">
+          <span className="text-white text-xs font-bold">!</span>
         </div>
       )}
     </div>
@@ -231,7 +243,7 @@ const VisualPackageCard = ({
   return (
     <Card
       className={cn(
-        'relative flex flex-col h-full transition-all duration-300 border-2 overflow-hidden',
+        'relative flex flex-col h-full transition-all duration-300 border-2 overflow-hidden cursor-pointer',
         'hover:scale-[1.02] hover:-translate-y-1',
         pkg.borderColor,
         status === 'running' && 'ring-2 ring-offset-2',
@@ -240,9 +252,11 @@ const VisualPackageCard = ({
         pkg.popular && 'scale-[1.01]'
       )}
       style={{
-        boxShadow: `0 0 25px -10px ${pkg.glowColor}`,
-        ringColor: status === 'running' ? pkg.glowColor : undefined
+        boxShadow: status === 'running'
+          ? `0 0 25px -10px ${pkg.glowColor}, 0 0 0 2px ${pkg.glowColor}50`
+          : `0 0 25px -10px ${pkg.glowColor}`
       }}
+      onClick={() => !disabled && status !== 'running' && onSelect(pkg.id)}
     >
       {/* Background Gradient */}
       <div className={cn('absolute inset-0 bg-gradient-to-b opacity-50', pkg.bgGradient)} />
@@ -250,8 +264,8 @@ const VisualPackageCard = ({
       {/* Popular Badge */}
       {pkg.popular && (
         <div className="absolute -top-0 right-3 z-10">
-          <Badge className="bg-violet-500 text-white px-3 py-1 text-xs font-semibold shadow-lg">
-            <Star className="w-3 h-3 mr-1" />
+          <Badge className="bg-violet-500 text-white px-4 py-1.5 text-sm font-bold shadow-lg animate-pulse">
+            <Star className="w-4 h-4 mr-2" />
             Popular
           </Badge>
         </div>
@@ -263,10 +277,10 @@ const VisualPackageCard = ({
           <PackageAvatar pkg={pkg} status={status} size="md" />
 
           <div className="flex-1 min-w-0">
-            <h3 className={cn('font-bold text-lg leading-tight', pkg.color)}>
+            <h3 className={cn('font-bold text-xl leading-tight', pkg.color)}>
               {pkg.name}
             </h3>
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-3">
               {pkg.subtitle}
             </p>
           </div>
@@ -275,13 +289,13 @@ const VisualPackageCard = ({
         {/* Contagem de Imagens */}
         <div className="bg-secondary/50 rounded-lg p-3 mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium flex items-center gap-1">
+            <span className="text-base font-medium flex items-center gap-1">
               <Image className="w-4 h-4" />
               Inclui {totalImages} imagens:
             </span>
           </div>
 
-          <div className="space-y-1 text-xs text-muted-foreground">
+          <div className="space-y-1.5 text-sm text-muted-foreground">
             {pkg.images.fundoBranco > 0 && (
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-3 h-3 text-green-500" />
@@ -309,7 +323,7 @@ const VisualPackageCard = ({
             {pkg.images.magicas > 0 && (
               <div className="flex items-center gap-2">
                 <Sparkles className="w-3 h-3 text-violet-500" />
-                <span className="font-medium">{pkg.images.magicas} imagens MÁGICAS com logo</span>
+                <span className="font-medium">{pkg.images.magicas} imagens MÁGICAS com SUA logo</span>
               </div>
             )}
           </div>
@@ -320,7 +334,7 @@ const VisualPackageCard = ({
           <p className="text-xs font-semibold text-muted-foreground mb-2">Vai junto:</p>
           <div className="space-y-1">
             {pkg.includes.map((item, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs">
+              <div key={i} className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="w-3 h-3 text-green-500 flex-shrink-0" />
                 <span>{item}</span>
               </div>
@@ -339,22 +353,24 @@ const VisualPackageCard = ({
         )}
 
         {/* Botão de Ação */}
-        <Button
+        {/* Indicador de Status (Substituindo o botão por indicação visual) */}
+        <div
           className={cn(
-            'w-full mt-auto font-semibold transition-all',
-            status === 'success' && 'bg-green-500 hover:bg-green-600',
-            status === 'error' && 'bg-red-500 hover:bg-red-600'
+            'w-full mt-auto font-semibold transition-all h-auto min-h-[48px] py-2 px-3 rounded-md shadow-sm flex items-center justify-center text-center leading-tight text-white border-0',
+            status === 'success' ? 'bg-green-500' :
+              status === 'error' ? 'bg-red-500' :
+                status === 'running' ? 'bg-blue-500' : 'bg-muted/30 text-muted-foreground'
           )}
           style={{
-            backgroundColor: status === 'idle' ? pkg.glowColor : undefined,
+            backgroundColor: status === 'idle' ? `${pkg.glowColor}20` : undefined,
+            color: status === 'idle' ? pkg.glowColor : undefined,
+            border: status === 'idle' ? `1px solid ${pkg.glowColor}40` : undefined
           }}
-          onClick={() => onSelect(pkg.id)}
-          disabled={disabled || status === 'running'}
         >
           {status === 'running' ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Gerando...
+              Processando...
             </>
           ) : status === 'success' ? (
             <>
@@ -363,11 +379,11 @@ const VisualPackageCard = ({
             </>
           ) : (
             <>
-              <pkg.icon className="w-4 h-4 mr-2" />
-              Gerar {pkg.name}
+              <pkg.icon className="w-4 h-4 mr-2 opacity-50" />
+              Selecionar {pkg.name.split(' ')[1]} {/* Exibe apenas 'Start', 'Pro', etc */}
             </>
           )}
-        </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -381,12 +397,16 @@ interface VisualPackageCardsProps {
   onGeneratePackage: (packageId: PackageType, config: VisualPackage) => Promise<void>;
   disabled?: boolean;
   className?: string;
+  onSelect?: (packageId: PackageType) => void;
+  selectedPackageId?: PackageType | null;
 }
 
 export const VisualPackageCards = ({
   onGeneratePackage,
   disabled,
-  className
+  className,
+  onSelect,
+  selectedPackageId
 }: VisualPackageCardsProps) => {
   const [statuses, setStatuses] = useState<Record<PackageType, PackageStatus>>({
     start: 'idle',
@@ -410,6 +430,12 @@ export const VisualPackageCards = ({
   });
 
   const handleSelect = async (packageId: PackageType) => {
+    // Se tiver onSelect, apenas seleciona e não inicia geração
+    if (onSelect) {
+      onSelect(packageId);
+      return;
+    }
+
     const pkg = VISUAL_PACKAGES.find(p => p.id === packageId);
     if (!pkg) return;
 
@@ -462,9 +488,9 @@ export const VisualPackageCards = ({
       <div className="text-center mb-6">
         <Badge className="bg-gradient-to-r from-violet-500 to-orange-500 text-white px-4 py-1.5 mb-3">
           <Sparkles className="w-4 h-4 mr-2" />
-          Pacotes de Geração Visual
+          Crie Imagens Incríveis
         </Badge>
-        <h3 className="text-xl font-bold">Escolha Seu Pacote de Imagens</h3>
+        <h3 className="text-xl font-bold">A nova geração de design</h3>
         <p className="text-sm text-muted-foreground mt-1">
           Clareza estratégica + linguagem de conversão para seu anúncio
         </p>
@@ -504,5 +530,5 @@ export const VisualPackageCards = ({
   );
 };
 
-export { VISUAL_PACKAGES, type VisualPackage };
+
 export default VisualPackageCards;

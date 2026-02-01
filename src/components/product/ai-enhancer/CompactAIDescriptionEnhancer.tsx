@@ -1,17 +1,14 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CompactAIDescriptionEnhancerProps, UnifiedAIResponse } from "./types";
-import { AIEnhancerHeader } from "./AIEnhancerHeader";
 import { ResultsContainer } from "./ResultsContainer";
 import { ResultsToggleSection } from "./ResultsToggleSection";
 import { useUnifiedResults } from "./hooks/useUnifiedResults";
-import { useUnifiedCommands } from "./hooks/useUnifiedCommands";
 
-export const CompactAIDescriptionEnhancer = ({ 
-  productName, 
-  shortDescription, 
+export const CompactAIDescriptionEnhancer = ({
+  productName,
+  shortDescription,
   onUpdateDescription,
   productId,
   productSku,
@@ -25,9 +22,9 @@ export const CompactAIDescriptionEnhancer = ({
   webhookComandoConfigured = false,
   webhookCopywritingConfigured = false
 }: CompactAIDescriptionEnhancerProps) => {
-  
+
   const [showResults, setShowResults] = useState(false);
-  
+
   console.log('🎯 MAIN - Renderizando com props:', {
     productName: productName || 'VAZIO',
     productId: productId || 'VAZIO',
@@ -39,15 +36,13 @@ export const CompactAIDescriptionEnhancer = ({
   // ✅ Hook simplificado - 100% em memória, sem persistência
   const { unifiedResults, setUnifiedResults } = useUnifiedResults();
 
-  const { isLoadingGemini, isLoadingOpenAI, generateUnifiedCommands } = useUnifiedCommands();
-
   // ✅ Combinar resultados INDEPENDENTEMENTE - cada fonte adiciona seus dados
   const combinedResults = useMemo((): UnifiedAIResponse | null => {
     // Verificar se há QUALQUER dado disponível
     const hasExternalData = externalUnifiedData && Object.keys(externalUnifiedData).length > 0;
     const hasLocalData = unifiedResults && Object.keys(unifiedResults).length > 0;
     const hasCopywriting = !!copywritingData?.content;
-    
+
     console.log('🔄 RESULTS - Calculando combinedResults (independente):', {
       hasExternalData,
       hasLocalData,
@@ -55,12 +50,12 @@ export const CompactAIDescriptionEnhancer = ({
       externalKeys: externalUnifiedData ? Object.keys(externalUnifiedData) : [],
       localKeys: unifiedResults ? Object.keys(unifiedResults) : [],
     });
-    
+
     // Se não há NENHUM dado, retornar null
     if (!hasExternalData && !hasLocalData && !hasCopywriting) {
       return null;
     }
-    
+
     // ✅ Construir resultado combinando TODAS as fontes disponíveis
     // Base com valores null para campos obrigatórios
     const result: UnifiedAIResponse = {
@@ -69,17 +64,17 @@ export const CompactAIDescriptionEnhancer = ({
       perguntas_respostas: null,
       kits_criativos: null,
     };
-    
+
     // 1. Adicionar dados locais (se existirem)
     if (hasLocalData && unifiedResults) {
       Object.assign(result, unifiedResults);
     }
-    
+
     // 2. Adicionar/sobrescrever com dados externos (Comando n8n) - têm prioridade
     if (hasExternalData && externalUnifiedData) {
       Object.assign(result, externalUnifiedData);
     }
-    
+
     // 3. Adicionar copywriting (se existir)
     if (hasCopywriting && copywritingData) {
       result.copywriting = {
@@ -87,9 +82,9 @@ export const CompactAIDescriptionEnhancer = ({
         keywords: [],
       };
     }
-    
+
     console.log('✅ RESULTS - Resultado combinado final:', Object.keys(result));
-    
+
     return result;
   }, [externalUnifiedData, unifiedResults, copywritingData]);
 
@@ -109,59 +104,6 @@ export const CompactAIDescriptionEnhancer = ({
     }
   }, [copywritingData]);
 
-  const handleGenerateGemini = useCallback(async () => {
-    console.log('🚀 MAIN - Gerando comandos unificados com Gemini...');
-    
-    await generateUnifiedCommands(
-      productName,
-      shortDescription,
-      'gemini',
-      (data) => {
-        console.log('📥 MAIN - Recebendo dados da API Gemini:', data);
-        setUnifiedResults(data);
-        setShowResults(true);
-        
-        // Emitir evento de conclusão para automação
-        window.dispatchEvent(new CustomEvent('unifiedCommandsComplete', {
-          detail: data
-        }));
-      }
-    );
-  }, [productName, shortDescription, generateUnifiedCommands, setUnifiedResults]);
-
-  const handleGenerateOpenAI = useCallback(async () => {
-    console.log('🚀 MAIN - Gerando comandos unificados com OpenAI (PADRÃO)...');
-    
-    await generateUnifiedCommands(
-      productName,
-      shortDescription,
-      'openai',
-      (data) => {
-        console.log('📥 MAIN - Recebendo dados da API OpenAI:', data);
-        setUnifiedResults(data);
-        setShowResults(true);
-        
-        // Emitir evento de conclusão para automação
-        window.dispatchEvent(new CustomEvent('unifiedCommandsComplete', {
-          detail: data
-        }));
-      }
-    );
-  }, [productName, shortDescription, generateUnifiedCommands, setUnifiedResults]);
-
-  // ✅ Função para baixar resultados como JSON
-  const downloadResults = useCallback(() => {
-    if (!combinedResults) return;
-    
-    const blob = new Blob([JSON.stringify(combinedResults, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `resultados-${productSku || productId || 'produto'}-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [combinedResults, productSku, productId]);
-
   // 🚫 AUTOMAÇÃO AUTOMÁTICA DESATIVADA
   useEffect(() => {
     const handleAutomationStart = async () => {
@@ -176,31 +118,22 @@ export const CompactAIDescriptionEnhancer = ({
   }, []);
 
   const shouldShowResults = combinedResults && Object.keys(combinedResults).length > 0;
-  const isAnyLoading = isLoadingGemini || isLoadingOpenAI;
 
   console.log('🎯 MAIN - Estado de renderização:', {
     productId: productId || 'N/A',
     shouldShowResults,
-    isLoadingGemini,
-    isLoadingOpenAI,
     showResults,
     hasCopywriting: !!combinedResults?.copywriting
   });
 
   return (
     <div className="space-y-3">
-      <AIEnhancerHeader
-        isLoading={isAnyLoading}
-        shortDescription={shortDescription}
-        onGenerateUnifiedCommands={handleGenerateOpenAI}
-        hasPersistedResults={false}
-        onExecuteWebhookComando={onExecuteWebhookComando}
-        onExecuteWebhookCopywriting={onExecuteWebhookCopywriting}
-        isLoadingComando={isLoadingComando}
-        isLoadingCopywriting={isLoadingCopywriting}
-        webhookComandoConfigured={webhookComandoConfigured}
-        webhookCopywritingConfigured={webhookCopywritingConfigured}
-      />
+      <div className="w-full flex items-center justify-center py-2 px-4 bg-slate-50 border border-slate-100 rounded-lg">
+        <span className="text-xs font-bold tracking-[0.2em] text-slate-400 uppercase">
+          Conversão + Performance + Copy Profissional
+        </span>
+      </div>
+
 
       {shouldShowResults && (
         <>
@@ -216,18 +149,9 @@ export const CompactAIDescriptionEnhancer = ({
                   <div className="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
                   <p className="text-amber-700 font-semibold">📋 Resultados Gerados (Temporários)</p>
                 </div>
-                <Button
-                  onClick={downloadResults}
-                  size="sm"
-                  variant="outline"
-                  className="text-amber-700 border-amber-300 hover:bg-amber-100"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Baixar JSON
-                </Button>
               </div>
               <p className="text-xs text-amber-600 mb-3">
-                ⚠️ Estes resultados existem apenas em memória. Fechar a aba = dados perdidos. Use o botão acima para salvar.
+                ⚠️ Estes resultados existem apenas em memória. Fechar a aba = dados perdidos.
               </p>
               <ResultsContainer
                 unifiedResults={combinedResults}

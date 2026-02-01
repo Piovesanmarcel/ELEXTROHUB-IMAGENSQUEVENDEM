@@ -12,20 +12,20 @@ export default function SaaSLandingPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 pb-20">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 pb-20" style={{ zoom: 0.9 }}>
 
             {/* 🔥 HEADLINE (DOBRA PRINCIPAL) */}
-            <section className="relative pt-20 pb-32 px-4 overflow-hidden">
+            <section className="relative pt-10 pb-16 px-4 overflow-hidden">
                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1974&auto=format&fit=crop')] bg-cover bg-center opacity-5 dark:opacity-10 pointer-events-none" />
                 <div className="max-w-5xl mx-auto text-center relative z-10">
-                    <Badge variant="secondary" className="mb-6 px-4 py-1 text-sm font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                    <Badge variant="secondary" className="mb-4 px-4 py-1 text-sm font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800">
                         Nova Geração de Anúncios
                     </Badge>
-                    <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+                    <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                         Crie anúncios profissionais <br className="hidden md:block" />
                         <span className="text-blue-600 dark:text-blue-400">impossíveis de copiar</span>
                     </h1>
-                    <p className="text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed">
+                    <p className="text-lg text-slate-600 dark:text-slate-400 max-w-3xl mx-auto mb-8 leading-relaxed">
                         Com identidade visual única, SEO, copy e precificação automática.
                         Gere imagens com logo, upscale profissional e um pacote completo para rankear, vender mais e dominar os marketplaces.
                     </p>
@@ -33,7 +33,7 @@ export default function SaaSLandingPage() {
                         <Button
                             size="lg"
                             onClick={handleCtaClick}
-                            className="h-14 px-8 text-lg font-bold bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 dark:shadow-blue-900/20 transform hover:-translate-y-1 transition-all rounded-full"
+                            className="h-12 px-8 text-lg font-bold bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 dark:shadow-blue-900/20 transform hover:-translate-y-1 transition-all rounded-full"
                         >
                             Quero Criar Meu Anúncio Agora
                             <ArrowRight className="ml-2 h-5 w-5" />
@@ -43,12 +43,12 @@ export default function SaaSLandingPage() {
             </section>
 
             {/* 🚨 O PROBLEMA */}
-            <section className="py-20 bg-white dark:bg-slate-900/50 border-y border-slate-200 dark:border-slate-800">
+            <section className="py-10 bg-white dark:bg-slate-900/50 border-y border-slate-200 dark:border-slate-800">
                 <div className="max-w-5xl mx-auto px-4">
-                    <h2 className="text-3xl font-bold text-center mb-12">
+                    <h2 className="text-2xl font-bold text-center mb-8">
                         <span className="text-red-500">🚨 O Problema:</span> A maioria dos sellers enfrenta o mesmo cenário
                     </h2>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {[
                             "Imagens genéricas",
                             "Concorrentes copiando tudo",
@@ -57,17 +57,17 @@ export default function SaaSLandingPage() {
                             "Poucas impressões orgãnicas"
                         ].map((item, i) => (
                             <Card key={i} className="border-red-100 bg-red-50/50 dark:bg-red-900/10 dark:border-red-900/30">
-                                <CardContent className="pt-6 flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center flex-shrink-0">
-                                        <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                <CardContent className="pt-4 pb-4 flex items-center gap-3">
+                                    <div className="h-6 w-6 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center flex-shrink-0">
+                                        <X className="h-4 w-4 text-red-600 dark:text-red-400" />
                                     </div>
-                                    <span className="font-medium text-slate-800 dark:text-slate-200">{item}</span>
+                                    <span className="font-medium text-sm text-slate-800 dark:text-slate-200">{item}</span>
                                 </CardContent>
                             </Card>
                         ))}
                         <Card className="border-slate-200 bg-slate-50 dark:bg-slate-800/50">
-                            <CardContent className="pt-6 flex items-center justify-center h-full">
-                                <p className="font-semibold text-center text-slate-600 dark:text-slate-400">
+                            <CardContent className="pt-4 pb-4 flex items-center justify-center h-full">
+                                <p className="font-semibold text-center text-sm text-slate-600 dark:text-slate-400">
                                     Não é falta de produto.<br />É falta de <span className="text-slate-900 dark:text-white">posicionamento visual</span>.
                                 </p>
                             </CardContent>
@@ -77,15 +77,15 @@ export default function SaaSLandingPage() {
             </section>
 
             {/* ✅ A SOLUÇÃO */}
-            <section className="py-24 px-4 bg-slate-50 dark:bg-slate-950">
+            <section className="py-12 px-4 bg-slate-50 dark:bg-slate-950">
                 <div className="max-w-6xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl font-bold mb-4">A Solução Definitiva</h2>
-                        <p className="text-xl text-slate-600 dark:text-slate-400">Um sistema que cria anúncios completos, não apenas imagens</p>
+                    <div className="text-center mb-10">
+                        <h2 className="text-3xl font-bold mb-3">A Solução Definitiva</h2>
+                        <p className="text-lg text-slate-600 dark:text-slate-400">Um sistema que cria anúncios completos, não apenas imagens</p>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-12 items-center">
-                        <div className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-8 items-center">
+                        <div className="space-y-4">
                             {[
                                 { icon: ImageIcon, text: "Imagens profissionais com LOGO da sua marca" },
                                 { icon: Target, text: "Identidade visual única e consistente" },
@@ -94,18 +94,18 @@ export default function SaaSLandingPage() {
                                 { icon: Rocket, text: "SEO + Copy + Precificação + EAN integrados" },
                                 { icon: Brain, text: "Tudo em um único comando unificado", highlight: true }
                             ].map((item, i) => (
-                                <div key={i} className={`flex items-center gap-4 p-4 rounded-xl transition-all ${item.highlight ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' : 'bg-white dark:bg-slate-900 shadow-sm hover:shadow-md'}`}>
-                                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${item.highlight ? 'bg-white/20' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
-                                        <item.icon className={`h-6 w-6 ${item.highlight ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`} />
+                                <div key={i} className={`flex items-center gap-3 p-3 rounded-lg transition-all ${item.highlight ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' : 'bg-white dark:bg-slate-900 shadow-sm hover:shadow-md'}`}>
+                                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${item.highlight ? 'bg-white/20' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
+                                        <item.icon className={`h-5 w-5 ${item.highlight ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`} />
                                     </div>
-                                    <span className={`text-lg font-medium ${item.highlight ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>{item.text}</span>
+                                    <span className={`text-base font-medium ${item.highlight ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>{item.text}</span>
                                 </div>
                             ))}
                         </div>
                         <div className="relative">
                             <div className="absolute -inset-4 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl opacity-20 blur-xl animate-pulse" />
-                            <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-8 border border-slate-200 dark:border-slate-800">
-                                <div className="aspect-square rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6 overflow-hidden">
+                            <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 border border-slate-200 dark:border-slate-800">
+                                <div className="aspect-square rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 overflow-hidden">
                                     <img
                                         src="https://images.unsplash.com/photo-1556742049-0cfed4f7a07d?auto=format&fit=crop&q=80&w=800"
                                         alt="Dashboard Preview"
@@ -113,8 +113,8 @@ export default function SaaSLandingPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
-                                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
+                                    <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+                                    <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
                                 </div>
                             </div>
                         </div>

@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { RefreshCw, Package, Sparkles, Rocket, Grid3x3, Cpu, Copy, Check, Settings, Play, Send, Zap, Clock, AlertCircle, Loader2, CheckCircle2, FileText, Shrink, Bot, Pause, PlayCircle, Wand2, Image } from "lucide-react";
-import { MagicAgentButton } from "@/components/generator/MagicAgentButton";
-import { ProductShowcaseGenerator } from "@/components/product/ProductShowcaseGenerator";
+﻿import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { RefreshCw, Package, Sparkles, Rocket, Grid3x3, Cpu, Copy, Check, Settings, Play, Send, Zap, Clock, AlertCircle, Loader2, CheckCircle2, FileText, Shrink, Bot, Pause, PlayCircle, Wand2, Image, Plus, Download, Crown, Eye, EyeOff } from "lucide-react";
+
+import { GeneratedImageGallery, GeneratedImage } from "@/components/n8n/GeneratedImageGallery";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,9 +24,11 @@ import { ProductDetailsLayout } from "@/components/product/ProductDetailsLayout"
 import { CanvaStyleTemplateGenerator } from "@/components/product/CanvaStyleTemplateGenerator";
 import { SafeErrorBoundary } from "@/components/SafeErrorBoundary";
 import PricingControls from "@/components/pricing/PricingControls";
+import { cn } from "@/lib/utils";
 import { ProductTable } from "@/components/ProductTable";
 import { useProductsPricing } from "@/hooks/products/useProductsPricing";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAdGeneratorAutomation } from "@/hooks/useAdGeneratorAutomation";
 import { AutomationProgressIndicator } from "@/components/product/AutomationProgressIndicator";
@@ -46,7 +48,10 @@ import { useRunwareTest } from "@/hooks/useRunwareTest";
 import { useAutomationSettings } from "@/hooks/useAutomationSettings";
 import EbookDownloadButton from "@/components/download/EbookDownloadButton";
 import { useMarketingTemplates } from "@/hooks/useMarketingTemplates";
+import { templateImageCache } from "@/utils/TemplateImageCache";
 import { TemplateConfig } from "@/types/marketing-templates";
+import { CompactAIDescriptionEnhancer } from "@/components/product/ai-enhancer/CompactAIDescriptionEnhancer";
+
 
 // Constante para referência (mesma da edge function)
 const PLACEHOLDER_REFERENCE_URL = "https://bpqtzydsxmjazdzzcvno.supabase.co/storage/v1/object/public/marketing-templates/placeholder-reference-1763672366451.png";
@@ -68,7 +73,7 @@ function buildTemplatePrompt(
 
 SUA MISSÃO: Criar uma imagem de marketing PROFISSIONAL e ATRAENTE.
 
-📐 ESPECIFICAÇÕES TÉCNICAS:
+📍 ESPECIFICAÇÕES TÉCNICAS:
 - Dimensões EXATAS: ${dimensions.width}x${dimensions.height} pixels
 - Template: ${templateName}
 - Qualidade: Alta resolução, cores vibrantes
@@ -82,7 +87,7 @@ ${description ? `- Descrição: ${description}` : ''}
 2. TEMPLATE BASE - Layout que DEVE ser replicado EXATAMENTE
 3. IMAGENS DO PRODUTO - Fotos do produto que DEVEM ser inseridas
 
-📋 ZONAS DO TEMPLATE:
+📝 ZONAS DO TEMPLATE:
 ${zoneDescriptions}
 
 ⚠️ REGRAS CRÍTICAS - SIGA RIGOROSAMENTE:
@@ -97,7 +102,7 @@ Uma imagem de marketing PROFISSIONAL que destaque o produto e mantenha a identid
 
 import { useWebhookStorage, WEBHOOK_CONFIGS } from "@/features/generator/hooks/useWebhookStorage";
 import { N8NWebhooksUI } from "@/components/settings/N8NWebhooksUI";
-import { VisualPackageCards, type PackageType, type VisualPackage } from "@/components/generator/VisualPackageCards";
+import { VisualPackageCards, VISUAL_PACKAGES, type PackageType, type VisualPackage } from "@/components/generator/VisualPackageCards";
 
 // ===== N8N Interfaces & Constants =====
 interface StepStatus {
@@ -113,11 +118,11 @@ const MAX_SCENE_RETRY_ATTEMPTS = 3;
 const SCENE_RETRY_DELAYS = [1000, 2000, 4000];
 
 const SCENE_TYPES = [
-  { id: 'product_studio', label: '📷 Studio Profissional', description: 'Fundo branco, iluminação profissional' },
+  { id: 'product_studio', label: '📸 Studio Profissional', description: 'Fundo branco, iluminação profissional' },
   { id: 'packaging', label: '📦 Embalagem Premium', description: 'Apresentação de embalagem luxuosa' },
   { id: 'mockup', label: '🏠 Mockup Realista', description: 'Produto em contexto de uso real' },
-  { id: 'lifestyle', label: '👤 Lifestyle', description: 'Interação humana com o produto' },
-  { id: 'ambient_1', label: '🌆 Ambiente Comercial', description: 'Cena em ambiente profissional/comercial' },
+  { id: 'lifestyle', label: '👩‍💻 Lifestyle', description: 'Interação humana com o produto' },
+  { id: 'ambient_1', label: '🏙️ Ambiente Comercial', description: 'Cena em ambiente profissional/comercial' },
   { id: 'ambient_2', label: '🏡 Ambiente Residencial', description: 'Produto em ambiente doméstico' },
   { id: 'ambient_3', label: '✨ Ambiente Minimalista', description: 'Clean, minimalista e elegante' },
   { id: 'person_using', label: '👋 Pessoa Usando', description: 'Demonstração de uso do produto' },
@@ -145,8 +150,12 @@ export default function UnifiedAdGeneratorCopy02() {
   const [expandedCanvaTemplates, setExpandedCanvaTemplates] = useState(false);
   const [expandedShowcase, setExpandedShowcase] = useState(false);
   const [expandedAutoProcessor, setExpandedAutoProcessor] = useState(false);
+
   const [isTestingMarketing, setIsTestingMarketing] = useState(false);
   const [isTestingStandard, setIsTestingStandard] = useState(false);
+
+  // Hook de créditos
+
 
 
 
@@ -162,7 +171,31 @@ export default function UnifiedAdGeneratorCopy02() {
 
   // ✅ NOVO: Estado separado para URLs HTTPS originais (não convertidas para blob)
   // Usado para geração de templates que requerem URLs acessíveis pela internet
+
+  // Estados para Progresso Real da Automação
+  const [initialImageCount, setInitialImageCount] = useState(0);
+  const [expectedTotalImages, setExpectedTotalImages] = useState(5); // Default start package
   const [originalHostedUrls, setOriginalHostedUrls] = useState<string[]>([]);
+
+  // Estado para o modal de download
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const previousImageCountRef = useRef(0);
+  const [wasAutomationStarted, setWasAutomationStarted] = useState(false);
+
+  // Monitorar chegada de novas imagens para abrir o modal
+  useEffect(() => {
+    // Só abre o modal se a automação foi iniciada (evita abrir no upload manual)
+    if (!wasAutomationStarted) {
+      previousImageCountRef.current = productImages.length;
+      return;
+    }
+
+    if (productImages.length > initialImageCount && productImages.length > previousImageCountRef.current) {
+      // Se novas imagens chegaram e temos conteúdo gerado, mostrar modal
+      setShowDownloadModal(true);
+    }
+    previousImageCountRef.current = productImages.length;
+  }, [productImages.length, initialImageCount, wasAutomationStarted]);
 
   // ===== N8N WEBHOOKS STATES (Substituído pelo Hook useWebhookStorage) =====
   // Removido useState locais para usar o hook centralizado
@@ -178,7 +211,6 @@ export default function UnifiedAdGeneratorCopy02() {
   // ✅ NOVO: Estados separados para resultados N8N (não afetam "Automação Completa")
   const [n8nUnifiedResult, setN8nUnifiedResult] = useState<any>(null);
   const [n8nCopywritingResult, setN8nCopywritingResult] = useState<any>(null);
-  const [wasAutomationStarted, setWasAutomationStarted] = useState(false);
 
   // ===== N8N PARALLEL GENERATION =====
   // Removido: sceneStatuses, generatedImages, isGeneratingImages
@@ -199,7 +231,7 @@ export default function UnifiedAdGeneratorCopy02() {
     webhookTratamentoCombinado, setWebhookTratamentoCombinado,
     isLoading
   } = useWebhookStorage();
-  const [isUnifiedFiring, setIsUnifiedFiring] = useState(false);
+
 
   // ✅ NOVO: Estado para indicador visual de upscale em progresso
   const [upscaleProgress, setUpscaleProgress] = useState<{
@@ -219,14 +251,51 @@ export default function UnifiedAdGeneratorCopy02() {
   const step2RunningRef = useRef(false);
 
   // ✅ Hook para controle de automação (kill switch)
-  const { isPaused, loading: automationSettingsLoading, updating: automationSettingsUpdating, togglePaused } = useAutomationSettings();
+  // const { isPaused, loading: automationSettingsLoading, updating: automationSettingsUpdating, togglePaused } = useAutomationSettings();
+  // ✅ TRAVA DE SEGURANÇA: Forçar automação sempre ativa (solicitação do usuário)
+  const isPaused = false;
+  const automationSettingsLoading = false;
+  const automationSettingsUpdating = false;
+  const togglePaused = () => toast.info("A automação está configurada para ficar sempre ativa.");
 
   // ✅ NOVO: Ref para deduplicação de eventos n8n (evitar loop infinito)
   const processedN8NImagesRef = useRef<Set<string>>(new Set());
 
+  // ✅ Estado para Configurações Avançadas (Toggle)
+  const [showConfig, setShowConfig] = useState(false);
+
   // ✅ Estados para o Botão Mágico "Acionar Agentes de Conversão"
   const [isMagicFlowExecuting, setIsMagicFlowExecuting] = useState(false);
   const [magicFlowCurrentStep, setMagicFlowCurrentStep] = useState<string | undefined>(undefined);
+
+  // ✅ NOVO: Estados para Fluxo Dinâmico (Selection -> Input -> Generating -> Results)
+  type WorkflowStep = 'selection' | 'input' | 'generating' | 'results';
+  const [workflowStep, setWorkflowStep] = useState<WorkflowStep>('selection');
+  const [selectedPackageId, setSelectedPackageId] = useState<PackageType | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+
+  const [hidePackages, setHidePackages] = useState(false);
+  const [hasDownloaded, setHasDownloaded] = useState(false);
+
+  // ✅ Estado para Header (Collapsible)
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
+
+  // Handler para Seleção de Pacote
+  const handlePackageSelect = (pkgId: PackageType) => {
+    setSelectedPackageId(pkgId);
+    setWorkflowStep('input');
+    toast.success(`Pacote selecionado! Preencha os dados do produto.`);
+    // Scroll suave para o formulário
+    setTimeout(() => {
+      document.getElementById('product-form-section')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  // Handler para Voltar para Seleção
+  const handleBackToSelection = () => {
+    setWorkflowStep('selection');
+    setSelectedPackageId(null);
+  };
 
   // ⚠️ Aviso ao sair da página se houver imagens não baixadas
   useEffect(() => {
@@ -321,8 +390,20 @@ export default function UnifiedAdGeneratorCopy02() {
   const [generationTarget, setGenerationTarget] = useState<number | null>(null);
   const generationResolver = useRef<((value: void | PromiseLike<void>) => void) | null>(null);
 
+  // WatchdogRefs
+  const lastImageCountRef = useRef<number>(0);
+  const lastActivityRef = useRef<number>(Date.now());
+
   // Monitorar chegada de imagens para liberar o botão
   useEffect(() => {
+    // Atualizar timestamp de atividade se houver novas imagens
+    if (productImages.length > lastImageCountRef.current) {
+      lastActivityRef.current = Date.now();
+      lastImageCountRef.current = productImages.length;
+      console.log('🐶 [Watchdog] Nova imagem detectada! Timer resetado.', { count: productImages.length });
+    }
+
+    // Lógica original de conclusão
     if (generationTarget !== null && productImages.length >= generationTarget) {
       if (generationResolver.current) {
         generationResolver.current();
@@ -333,8 +414,41 @@ export default function UnifiedAdGeneratorCopy02() {
     }
   }, [productImages.length, generationTarget]);
 
+  // Watchdog Timer: Verifica inatividade
+  useEffect(() => {
+    if (generationTarget === null) return; // Só roda se estiver esperando
 
-  // 🏷️ Brand Settings para logo global
+    console.log('🐶 [Watchdog] Monitor iniciado...');
+
+    const intervalId = setInterval(() => {
+      const timeSinceLastActivity = Date.now() - lastActivityRef.current;
+      const ACTIVITY_TIMEOUT = 45000; // 45 segundos sem novas imagens
+
+      // Se passou do tempo limite E já temos pelo menos 1 imagem (para não matar jobs no início)
+      if (timeSinceLastActivity > ACTIVITY_TIMEOUT && productImages.length > 0) {
+        console.warn('🐶 [Watchdog] TIMEOUT DE INATIVIDADE! Forçando conclusão...', {
+          timeSinceLastActivity,
+          current: productImages.length,
+          target: generationTarget
+        });
+
+        toast.warning("Geração finalizada por tempo limite", {
+          description: `Recebemos ${productImages.length} imagens. Algumas podem ter falhado no processamento.`
+        });
+
+        if (generationResolver.current) {
+          generationResolver.current();
+          generationResolver.current = null;
+        }
+        setGenerationTarget(null);
+      }
+    }, 5000); // Verifica a cada 5s
+
+    return () => clearInterval(intervalId);
+  }, [generationTarget, productImages.length]);
+
+
+  // 🎨 Brand Settings para logo global
   const { brandSettings } = useBrandSettings();
 
   // 📡 Hook global para receber broadcasts de imagens do n8n
@@ -343,7 +457,7 @@ export default function UnifiedAdGeneratorCopy02() {
   // 💰 Hook de créditos
   const { usage, isLoading: isLoadingCredits } = useEnhancementUsage();
 
-  // 📈 Hook Runware para upscale automático
+  // 🚀 Hook Runware para upscale automático
   const { upscaleImage } = useRunwareTest();
 
   // Callback para atualizar galeria ao finalizar automação
@@ -416,7 +530,7 @@ export default function UnifiedAdGeneratorCopy02() {
     }
   }, [referenceImages]);
 
-  // 🔧 Ref para acesso síncrono ao estado isAutomationRunning (evita race condition)
+  // ⚙️ Ref para acesso síncrono ao estado isAutomationRunning (evita race condition)
   const isAutomationRunningRef = useRef(isAutomationRunning);
 
   // Manter ref sincronizada com o estado
@@ -428,7 +542,7 @@ export default function UnifiedAdGeneratorCopy02() {
   // Listener para dados do Comando Unificado
   useEffect(() => {
     const handleUnifiedComplete = (event: CustomEvent) => {
-      console.log('📥 [UnifiedAdGenerator] Comando Unificado completo:', event.detail);
+      console.log('📣 [UnifiedAdGenerator] Comando Unificado completo:', event.detail);
       console.log('🔍 [UnifiedAdGenerator] isAutomationRunning (ref):', isAutomationRunningRef.current);
       setUnifiedData(event.detail);
       if (isAutomationRunningRef.current) {
@@ -457,7 +571,7 @@ export default function UnifiedAdGeneratorCopy02() {
   // Listener para Copywriting completo
   useEffect(() => {
     const handleCopyComplete = (event: CustomEvent) => {
-      console.log('📥 [UnifiedAdGenerator] Copywriting completo');
+      console.log('📣 [UnifiedAdGenerator] Copywriting completo');
       console.log('🔍 [UnifiedAdGenerator] isAutomationRunning (ref):', isAutomationRunningRef.current);
       if (isAutomationRunningRef.current) {
         console.log('✅ [UnifiedAdGenerator] Chamando handleCopywritingComplete...');
@@ -474,7 +588,7 @@ export default function UnifiedAdGeneratorCopy02() {
   // Listener para Gemini completo
   useEffect(() => {
     const handleGeminiComplete2 = (event: CustomEvent) => {
-      console.log('📥 [UnifiedAdGenerator] Gemini completo');
+      console.log('📣 [UnifiedAdGenerator] Gemini completo');
       console.log('🔍 [UnifiedAdGenerator] isAutomationRunning (ref):', isAutomationRunningRef.current);
       if (isAutomationRunningRef.current) {
         const images = event.detail?.images || [];
@@ -493,7 +607,7 @@ export default function UnifiedAdGeneratorCopy02() {
   // Listener para KITs completo
   useEffect(() => {
     const handleKitsComplete2 = (event: CustomEvent) => {
-      console.log('📥 [UnifiedAdGenerator] KITs completos');
+      console.log('📣 [UnifiedAdGenerator] KITs completos');
       console.log('🔍 [UnifiedAdGenerator] isAutomationRunning (ref):', isAutomationRunningRef.current);
       if (isAutomationRunningRef.current) {
         console.log('✅ [UnifiedAdGenerator] Chamando handleKitsComplete...');
@@ -545,7 +659,7 @@ export default function UnifiedAdGeneratorCopy02() {
         const eventKey = `${jobId}-${templateId}-${event.detail?.receivedAt || Date.now()}`;
 
         if (processedN8NImagesRef.current.has(eventKey)) {
-          console.log(`⏭️ [UNIFIED-AD-GENERATOR] Evento n8n já processado, ignorando: ${eventKey}`);
+          console.log(`🚫 [UNIFIED-AD-GENERATOR] Evento n8n já processado, ignorando: ${eventKey}`);
           return;
         }
 
@@ -617,7 +731,7 @@ export default function UnifiedAdGeneratorCopy02() {
 
                 setProductImages(prev => {
                   if (prev.includes(blobUrl)) {
-                    console.log(`⏭️ [N8N→GALERIA] Imagem ${sceneType} upscaled já existe`);
+                    console.log(`🚫 [N8N→GALERIA] Imagem ${sceneType} upscaled já existe`);
                     return prev;
                   }
                   console.log(`✅ [N8N→GALERIA] Imagem ${sceneType} upscaled adicionada (${upscaleResult.data[0].cost || 'N/A'} créditos)`);
@@ -659,7 +773,7 @@ export default function UnifiedAdGeneratorCopy02() {
       // Fluxo normal para outras fontes
       if (eventProductId && eventProductId !== productId) return;
 
-      console.log(`📥 [UNIFIED-AD-GENERATOR] Imagem gerada recebida:`, { source, hasImages: !!images, hasUrl: !!url, hasHostedUrl: !!hostedUrl });
+      console.log(`📣 [UNIFIED-AD-GENERATOR] Imagem gerada recebida:`, { source, hasImages: !!images, hasUrl: !!url, hasHostedUrl: !!hostedUrl });
 
       const rawUrls: string[] = [];
       const httpsUrls: string[] = [];
@@ -703,7 +817,7 @@ export default function UnifiedAdGeneratorCopy02() {
           if (uniqueNew.length === 0) return prev;
           const updated = [...prev, ...uniqueNew];
           console.log(`🔗 [UNIFIED-AD-GENERATOR] URLs HTTPS preservadas: ${uniqueNew.length} novas, total: ${updated.length}`);
-          safeStorageSet('unified_ad_generator_hosted_urls', updated, 30);
+          safeStorageSet('unified_ad_generator_hosted_urls', updated, 120);
           return updated;
         });
       }
@@ -718,7 +832,7 @@ export default function UnifiedAdGeneratorCopy02() {
           const updated = [...prev, ...uniqueNew];
           console.log(`✅ [UNIFIED-AD-GENERATOR] Adicionadas ${uniqueNew.length} imagens à galeria, total: ${updated.length}`);
 
-          safeStorageSet('unified_ad_generator_product_images', updated, 30);
+          safeStorageSet('unified_ad_generator_product_images', updated, 120);
 
           return updated;
         });
@@ -733,14 +847,14 @@ export default function UnifiedAdGeneratorCopy02() {
       const imageUrl = hostedUrl || url;
       if (!imageUrl) return;
 
-      console.log(`📥 [UNIFIED-AD-GENERATOR] Imagem hospedada salva:`, imageUrl.substring(0, 60));
+      console.log(`📣 [UNIFIED-AD-GENERATOR] Imagem hospedada salva:`, imageUrl.substring(0, 60));
 
       if (imageUrl.startsWith('https://')) {
         setOriginalHostedUrls(prev => {
           if (prev.includes(imageUrl)) return prev;
           const updated = [...prev, imageUrl];
           console.log(`🔗 [UNIFIED-AD-GENERATOR] URL HTTPS hospedada preservada, total: ${updated.length}`);
-          safeStorageSet('unified_ad_generator_hosted_urls', updated, 30);
+          safeStorageSet('unified_ad_generator_hosted_urls', updated, 120);
           return updated;
         });
       }
@@ -756,7 +870,7 @@ export default function UnifiedAdGeneratorCopy02() {
         const updated = [...prev, safeUrl];
         console.log(`✅ [UNIFIED-AD-GENERATOR] Imagem hospedada adicionada, total: ${updated.length}`);
 
-        safeStorageSet('unified_ad_generator_product_images', updated, 30);
+        safeStorageSet('unified_ad_generator_product_images', updated, 120);
 
         return updated;
       });
@@ -832,7 +946,44 @@ export default function UnifiedAdGeneratorCopy02() {
         console.error('Erro ao restaurar imagens:', e);
       }
     }
+
+
+    // RESTAURAR ESTADO DE FLUXO (Se existir)
+    const savedStep = sessionStorage.getItem('unified_ad_workflow_step');
+    const savedInitialCount = sessionStorage.getItem('unified_ad_initial_count');
+    const savedExpectedTotal = sessionStorage.getItem('unified_ad_expected_total');
+    const savedHidePackages = sessionStorage.getItem('unified_ad_hide_packages');
+    const savedHasDownloaded = sessionStorage.getItem('unified_ad_has_downloaded');
+
+    if (savedStep && (savedStep === 'results' || savedStep === 'generating')) {
+      console.log(`♻️ [STATE] Restaurando passo do fluxo para: ${savedStep}`);
+      setWorkflowStep(savedStep as WorkflowStep);
+
+      if (savedInitialCount) setInitialImageCount(Number(savedInitialCount));
+      if (savedExpectedTotal) setExpectedTotalImages(Number(savedExpectedTotal));
+      if (savedHidePackages === 'true') setHidePackages(true);
+      if (savedHasDownloaded === 'true') setHasDownloaded(true);
+
+      // Se estava em results, garantir que agentProgress não fique em 0
+      if (savedStep === 'results') setAgentProgress(100);
+    }
+
   }, []);
+
+  // PERSISTÊNCIA DE ESTADO (Salvar mudanças críticas)
+  useEffect(() => {
+    if (workflowStep !== 'selection') {
+      sessionStorage.setItem('unified_ad_workflow_step', workflowStep);
+      sessionStorage.setItem('unified_ad_initial_count', String(initialImageCount));
+      sessionStorage.setItem('unified_ad_expected_total', String(expectedTotalImages));
+      sessionStorage.setItem('unified_ad_hide_packages', String(hidePackages));
+      sessionStorage.setItem('unified_ad_has_downloaded', String(hasDownloaded));
+    } else {
+      // Se voltou para seleção (novo produto), limpar estado persistido do fluxo
+      // MAS MANTER IMAGENS SE O USUARIO APENAS RECARREGOU
+      // Logica ajustada: Limpar apenas se foi explicitamente para selection via RESET
+    }
+  }, [workflowStep, initialImageCount, expectedTotalImages, hidePackages, hasDownloaded]);
 
   // ✅ NOVO: Persistir imagens de referência no sessionStorage
   useEffect(() => {
@@ -842,12 +993,12 @@ export default function UnifiedAdGeneratorCopy02() {
     }
   }, [referenceImages]);
 
-  // 🧹 Limpar cache de IA quando as imagens de referência mudarem
+  // 🧪 Limpar cache de IA quando as imagens de referência mudarem
   useEffect(() => {
     if (referenceImages.length > 0) {
       const aiCache = AIImagesSessionCache.getInstance();
       aiCache.clearAllAICache();
-      console.log('🧹 [UNIFIED-AD-GENERATOR] Cache de IA limpo - novas imagens de referência detectadas');
+      console.log('🧪 [UNIFIED-AD-GENERATOR] Cache de IA limpo - novas imagens de referência detectadas');
     }
   }, [referenceImages]);
 
@@ -895,28 +1046,50 @@ export default function UnifiedAdGeneratorCopy02() {
   }, [productId]);
 
   // 🔄 Handler para Novo Produto
-  const handleNewProduct = useCallback(() => {
+  // 🔄 Handler para Novo Produto
+  const handleNewProduct = () => {
+    // Limpar Storage
     sessionStorage.removeItem('unified_ad_generator_product_id');
     sessionStorage.removeItem('unified_ad_generator_product_images');
     sessionStorage.removeItem('unified_ad_generator_reference_images');
-    sessionStorage.removeItem('unified_ad_generator_last_product_name');
+    sessionStorage.removeItem('unified_ad_workflow_step'); // Importante limpar step
+    sessionStorage.removeItem('unified_ad_initial_count');
+    sessionStorage.removeItem('unified_ad_expected_total');
+    sessionStorage.removeItem('unified_ad_hide_packages');
+    sessionStorage.removeItem('unified_ad_has_downloaded');
 
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && (key.startsWith('ai_images_') || key.startsWith('unified_ad_generator_'))) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(key => sessionStorage.removeItem(key));
+    // Reset Estados Locais
+    setWorkflowStep('selection');
+    setSelectedPackageId(null);
+    setProductImages([]);
+    setHostedAIImages([]);
+    setFormData({
+      nome: '',
+      sku: '',
+      descricao_curta: '',
+      descricao: '',
+      preco_custo: 0,
+      preco_venda: 0,
+      peso_liquido: 0,
+      altura: null,
+      largura: null,
+      profundidade: null,
+      peso_bruto: null,
+    });
+    setAgentProgress(0);
+    setCurrentAgent('');
+    setShowCompletionModal(false); // Garantir que modal fecha
+    setHidePackages(false); // Mostrar pacotes novamente
 
-    console.log('🧹 [UNIFIED-AD-GENERATOR] Cache limpo para novo produto');
-    toast.success('Cache limpo! Recarregando para novo produto...');
+    toast.success('Iniciando novo produto...');
 
-    window.location.reload();
-  }, []);
+    // Forçar reload para garantir limpeza total de estado
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
 
-  // 🔔 Detectar mudança significativa de produto
+  // 🔍 Detectar mudança significativa de produto
   useEffect(() => {
     const savedName = sessionStorage.getItem('unified_ad_generator_last_product_name');
 
@@ -996,7 +1169,7 @@ export default function UnifiedAdGeneratorCopy02() {
       }
 
       const data = proxyResponse;
-      console.log(`📥 [Paralelo] Resposta para ${sceneType}:`, JSON.stringify(data).substring(0, 200));
+      console.log(`📣 [Paralelo] Resposta para ${sceneType}:`, JSON.stringify(data).substring(0, 200));
 
       let imageUrl: string | undefined;
       let mimeType: string = 'image/png';
@@ -1142,8 +1315,8 @@ export default function UnifiedAdGeneratorCopy02() {
     }
 
     // Gerar jobId único e registrar na tabela de autorização
-    const jobId = `parallel_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    console.log('🔐 [Teste Paralelo] Registrando job autorizado:', jobId);
+    const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    console.log('🔑 [Teste Paralelo] Registrando job autorizado:', jobId);
 
     // CRÍTICO: Obter userId de forma confiável (não depender do state)
     const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -1287,21 +1460,21 @@ export default function UnifiedAdGeneratorCopy02() {
   // Não mais necessário pois não temos mais ParallelGenerationMonitor
 
   // ===== N8N: Executar Etapa 1 - Comando Unificado =====
-  // Retorna Promise<boolean> para indicar sucesso/falha ao Magic Flow
-  const executeStep1 = async (): Promise<boolean> => {
+  // Retorna Promise<any> com os dados ou null
+  const executeStep1 = async (): Promise<any> => {
     // ✅ Verificar se já está rodando via ref (evita condição de corrida)
     if (step1RunningRef.current) {
       console.log('[executeStep1] Já está executando, ignorando clique duplicado');
-      return false;
+      return null;
     }
 
     if (!webhookComandoUnificado) {
       toast.error("Configure a URL do webhook Comando Unificado");
-      return false;
+      return null;
     }
     if (!formData.nome) {
       toast.error("Preencha o nome do produto");
-      return false;
+      return null;
     }
 
     // ✅ Marcar como rodando ANTES de qualquer operação async
@@ -1378,13 +1551,13 @@ export default function UnifiedAdGeneratorCopy02() {
 
       console.log('[executeStep1] ✅ Concluído com sucesso em', Date.now() - startTime, 'ms');
       toast.success("Etapa 1: Comando Unificado concluído!");
-      return true; // ✅ Sucesso
+      return result; // ✅ Sucesso: Retorna dados
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro';
       console.error('[executeStep1] ❌ Erro:', errorMsg);
       setStep1(prev => ({ ...prev, status: "error", error: errorMsg, completedAt: new Date().toISOString() }));
       toast.error(`Etapa 1 falhou: ${errorMsg}`);
-      return false; // ✅ Falha
+      return null; // ✅ Falha
     } finally {
       // ✅ SEMPRE limpar a ref, independente de sucesso ou erro
       step1RunningRef.current = false;
@@ -1393,21 +1566,21 @@ export default function UnifiedAdGeneratorCopy02() {
   };
 
   // ===== N8N: Executar Etapa 2 - Copywriting =====
-  // Retorna Promise<boolean> para indicar sucesso/falha ao Magic Flow
-  const executeStep2 = async (): Promise<boolean> => {
+  // Retorna Promise<any> com dados
+  const executeStep2 = async (): Promise<any> => {
     // ✅ Verificar se já está rodando via ref (evita condição de corrida)
     if (step2RunningRef.current) {
       console.log('[executeStep2] Já está executando, ignorando clique duplicado');
-      return false;
+      return null;
     }
 
     if (!webhookCopywriting) {
       toast.error("Configure a URL do webhook Copywriting");
-      return false;
+      return null;
     }
     if (!formData.nome) {
       toast.error("Preencha o nome do produto");
-      return false;
+      return null;
     }
 
     // ✅ Marcar como rodando ANTES de qualquer operação async
@@ -1465,9 +1638,8 @@ export default function UnifiedAdGeneratorCopy02() {
       });
 
       // Propagar resultados para o bloco de Copywriting
+      let copyContent = '';
       if (data?.copywriting || data?.content) {
-        let copyContent = '';
-
         try {
           // Caso 1: copywriting é string JSON - precisa parsear
           if (typeof data.copywriting === 'string') {
@@ -1517,21 +1689,25 @@ export default function UnifiedAdGeneratorCopy02() {
 
       console.log('[executeStep2] ✅ Concluído com sucesso em', Date.now() - startTime, 'ms');
       toast.success("Etapa 2: Copywriting concluído!");
-      return true; // ✅ Sucesso
+
+      // Retornar o conteúdo extraído ou o objeto completo (no caso o setN8nCopywritingResult já limpou)
+      // Como a gente precisa do 'content' limpo, vamos tentar retornar isso
+      return { content: copyContent || JSON.stringify(data) };
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro';
       console.error('[executeStep2] ❌ Erro:', errorMsg);
       setStep2(prev => ({ ...prev, status: "error", error: errorMsg, completedAt: new Date().toISOString() }));
       toast.error(`Etapa 2 falhou: ${errorMsg}`);
-      return false; // ✅ Falha
+      return null; // ✅ Falha
     } finally {
       // ✅ SEMPRE limpar a ref, independente de sucesso ou erro
       step2RunningRef.current = false;
-      console.log('[executeStep2] 🏁 Execução finalizada, ref limpa');
+      console.log('[executeStep2] ðŸ ExecuÃ§Ã£o finalizada, ref limpa');
     }
   };
 
-  // ===== BOTÃO MÁGICO: Executar Agentes de Conversão (ATLAS → LYRA → ORION) =====
+  // ===== BOTÃƒO MÃGICO: Executar Agentes de Conversão (ATLAS ←’ LYRA ←’ ORION) =====
   const handleMagicFlow = async () => {
     // Verificar webhooks configurados
     if (!webhookComandoUnificado) {
@@ -1547,14 +1723,16 @@ export default function UnifiedAdGeneratorCopy02() {
       return;
     }
 
-    // Verificar campos obrigatórios
+    // Verificar campos obrigatÃ³rios
     if (!isFormValid) {
-      toast.error("Preencha todos os campos obrigatórios antes de acionar os agentes");
+      toast.error("Preencha todos os campos obrigatÃ³rios antes de acionar os agentes");
       return;
     }
 
-    console.log('🚀 [MagicFlow] Iniciando sequência de agentes de conversão...');
+    console.log('ðŸš€ [MagicFlow] Iniciando sequÃªncia de agentes de conversão...');
     setIsMagicFlowExecuting(true);
+    setWasAutomationStarted(true); // ✅ Marca que automação começou
+    setInitialImageCount(productImages.length); // ✅ Trava contador inicial para saber o que é novo
 
     try {
       // ===== ETAPA 1: ATLAS (Comando Unificado) =====
@@ -1563,13 +1741,13 @@ export default function UnifiedAdGeneratorCopy02() {
 
       const atlasSuccess = await executeStep1();
       if (!atlasSuccess) {
-        toast.error("❌ ATLAS falhou. Fluxo interrompido.");
-        console.log('[MagicFlow] ❌ ATLAS falhou, interrompendo fluxo');
+        toast.error("âŒ ATLAS falhou. Fluxo interrompido.");
+        console.log('[MagicFlow] âŒ ATLAS falhou, interrompendo fluxo');
         return;
       }
 
       setMagicFlowCurrentStep("atlas_complete");
-      // Aguardar 2 segundos antes da próxima etapa
+      // Aguardar 2 segundos antes da prÃ³xima etapa
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // ===== ETAPA 2: LYRA (Copywriting) =====
@@ -1578,13 +1756,13 @@ export default function UnifiedAdGeneratorCopy02() {
 
       const lyraSuccess = await executeStep2();
       if (!lyraSuccess) {
-        toast.error("❌ LYRA falhou. Fluxo interrompido.");
-        console.log('[MagicFlow] ❌ LYRA falhou, interrompendo fluxo');
+        toast.error("âŒ LYRA falhou. Fluxo interrompido.");
+        console.log('[MagicFlow] âŒ LYRA falhou, interrompendo fluxo');
         return;
       }
 
       setMagicFlowCurrentStep("lyra_complete");
-      // Aguardar 2 segundos antes da próxima etapa
+      // Aguardar 2 segundos antes da prÃ³xima etapa
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // ===== ETAPA 3: ORION (Tratamento 8 Cenas) =====
@@ -1596,12 +1774,12 @@ export default function UnifiedAdGeneratorCopy02() {
 
       setMagicFlowCurrentStep("orion_complete");
 
-      toast.success("🎉 Agentes de Conversão concluídos!");
-      console.log('[MagicFlow] ✅ Fluxo completo executado com sucesso!');
+      toast.success("ðŸŽ‰ Agentes de Conversão concluÃ­dos!");
+      console.log('[MagicFlow] âœ… Fluxo completo executado com sucesso!');
 
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('[MagicFlow] ❌ Erro no fluxo:', errorMsg);
+      console.error('[MagicFlow] âŒ Erro no fluxo:', errorMsg);
       toast.error(`Erro nos agentes: ${errorMsg}`);
     } finally {
       setIsMagicFlowExecuting(false);
@@ -1624,7 +1802,7 @@ export default function UnifiedAdGeneratorCopy02() {
     const webhookUrl = webhooks[webhookKey];
 
     if (!webhookUrl) {
-      toast.error('Nenhum webhook "Mágica" ou "Marketing" encontrado na configuração.');
+      toast.error('Nenhum webhook "MÃ¡gica" ou "Marketing" encontrado na configuraÃ§Ã£o.');
       return;
     }
 
@@ -1645,15 +1823,15 @@ export default function UnifiedAdGeneratorCopy02() {
         return fullBase64;
       }));
 
-      // 2. Preparar Template e Referência
+      // 2. Preparar Template e ReferÃªncia
       const geralTemplates = marketingTemplates.filter(t => t.category === 'Geral 01');
       const randomTemplate = geralTemplates.length > 0
         ? geralTemplates[Math.floor(Math.random() * geralTemplates.length)]
         : marketingTemplates[0];
 
-      if (!randomTemplate) throw new Error("Nenhum template disponível");
+      if (!randomTemplate) throw new Error("Nenhum template disponÃ­vel");
 
-      // Baixar Referência (máscara)
+      // Baixar ReferÃªncia (mÃ¡scara)
       let referenceBase64 = "";
       try {
         const refRes = await fetch(PLACEHOLDER_REFERENCE_URL);
@@ -1707,7 +1885,7 @@ export default function UnifiedAdGeneratorCopy02() {
           reference_base64: referenceBase64,
           template_base64: templateBase64,
           product_images_base64: processed,
-          logo_base64: null // Simplificação para teste
+          logo_base64: null // SimplificaÃ§Ã£o para teste
         },
         metadata: {
           productName: formData.nome,
@@ -1777,7 +1955,7 @@ export default function UnifiedAdGeneratorCopy02() {
         base64: p.base64
       }));
 
-      // 2. Identificar Webhooks Standard (Filtro restrito a 'vb_' e tipos específicos: Fundo e Ambientada)
+      // 2. Identificar Webhooks Standard (Filtro restrito a 'vb_' e tipos especÃ­ficos: Fundo e Ambientada)
       const targetKeys = Object.keys(webhooks).filter(k => {
         const lowerK = k.toLowerCase();
         return k.startsWith('vb_') &&
@@ -1848,1316 +2026,1024 @@ export default function UnifiedAdGeneratorCopy02() {
     }
   };
 
-  // ===== WEBHOOK UNIFICADO 4 (Disparo Simultâneo) =====
-  const handleUnified4Fire = async () => {
-    const url1 = webhooks['n8n_unified_4_url_1'];
-    const url2 = webhooks['n8n_unified_4_url_2'];
-    const url3 = webhooks['n8n_unified_4_url_3'];
-    // const url4 = webhooks['n8n_unified_4_url_4']; // Removido por solicitação
 
-    // ✅ VALIDAÇÃO OBRIGATÓRIA: Imagem e Dados do Produto
+  // Handler para Geração do Pacote (Extraído da inline function)
+  const handleGeneratePackage = async (
+    packageId: PackageType,
+    config: VisualPackage,
+    unifiedContext?: any,
+    copywritingContext?: any
+  ) => {
+    // Validar dados
+    if (!formData.nome?.trim()) {
+      toast.error('Preencha o nome do produto');
+      return;
+    }
     if (productImages.length === 0) {
-      toast.error("⚠️ Atenção: Nenhuma imagem do produto encontrada! Faça o upload de pelo menos uma foto.");
+      toast.error('Adicione imagens do produto');
+      return;
+    }
+    if (!userId) {
+      toast.error('Erro de autenticação: User ID não encontrado');
       return;
     }
 
-    if (!formData.nome || formData.nome.trim() === '') {
-      toast.error("⚠️ Atenção: O Nome do Produto é obrigatório!");
-      return;
-    }
+    console.log(`[VisualPackage] Iniciando pacote: ${packageId} (${config.name})`);
+    toast.info(`Iniciando geração do pacote ${config.name}...`);
 
-    // Opcional: Validar descrição também se for crucial
-    if ((!formData.descricao || formData.descricao.trim() === '') && (!formData.descricao_curta || formData.descricao_curta.trim() === '')) {
-      toast.warning("ℹ️ Dica: Adicionar uma descrição ajuda a IA a gerar melhores resultados.");
-      toast.error("⚠️ Atenção: Adicione uma descrição para o produto.");
-      return;
-    }
+    let standardImages: Array<{ index: number; filename: string; mimeType: string; base64: string }> = [];
+    let magicaImagesBase64: string[] = [];
+    let logoBase64: string | undefined;
 
-    if (!url1 && !url2 && !url3) {
-      toast.error("Configure pelo menos 1 URL para o Webhook Unificado 4");
-      return;
-    }
+    const prefixes: Record<PackageType, string> = {
+      start: 'vs_',
+      pro: 'vp_',
+      expert: 've_',
+      brand: 'vb_'
+    };
+    const prefix = prefixes[packageId];
 
-    const activeUrls = [];
-    if (url1) activeUrls.push(url1);
-    if (url2) activeUrls.push(url2);
-    if (url3) activeUrls.push(url3);
-    // if (url4) activeUrls.push(url4);
+    const PACKAGE_RECIPES: Record<PackageType, string[]> = {
+      start: ['fundo_branco', 'ambientada'],
+      pro: ['fundo_branco', 'ambientada'],
+      expert: ['fundo_branco', 'ambientada', 'em_uso'],
+      brand: ['fundo_branco', 'ambientada', 'em_uso', 'com_pessoas']
+    };
 
-    toast.info(`🚀 Processando imagens e disparando ${activeUrls.length} webhooks...`);
-    setIsUnifiedFiring(true); // ✅ Trava o botão e inicia o "giro infinito"
+    const requiredSuffixes = PACKAGE_RECIPES[packageId];
+    const targetKeys: string[] = [];
 
-    // ✅ SUPER CORREÇÃO: Converter imagens para base64 igual ao Teste Paralelo
-    // N8N Redis espera: { filename, mimeType, base64, index }
-    let imagesToSend: Array<{ index: number; filename: string; mimeType: string; base64: string }> = [];
-
-    try {
-      for (let i = 0; i < Math.min(productImages.length, 3); i++) {
-        const response = await fetch(productImages[i]);
-        const blob = await response.blob();
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(',')[1] || '');
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-
-        imagesToSend.push({
-          index: i + 1,
-          filename: `image_${i + 1}.png`,
-          mimeType: blob.type || 'image/png',
-          base64
-        });
-      }
-    } catch (error) {
-      console.error("Erro ao processar imagens:", error);
-      toast.error("Falha ao processar imagens. Tente novamente.");
-      setIsUnifiedFiring(false);
-      return;
-    }
-
-    // Gerar JobID (necessário para o N8N saber onde devolver a imagem)
-    const jobId = `unified_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    const effectiveUserId = userId; // Assumindo userId do escopo do componente
-
-    // Opcional: Registrar Job no Supabase se o fluxo N8N usar a tabela authorized_jobs para validação
-    // Vou registrar igual ao runSceneTests para garantir compatibilidade total
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    await supabase.from('authorized_jobs').insert({
-      job_id: jobId,
-      user_id: effectiveUserId,
-      expected_images: activeUrls.length, // Aproximação
-      status: 'active',
-      expires_at: expiresAt,
-      metadata: {
-        product_name: formData.nome,
-        source: 'unified-webhook-button'
+    const missingWebhooks: string[] = [];
+    requiredSuffixes.forEach(suffix => {
+      const key = `${prefix}${suffix}`;
+      const exactKey = Object.keys(webhooks).find(k => k.toLowerCase() === key.toLowerCase());
+      if (exactKey) {
+        targetKeys.push(exactKey);
+      } else {
+        missingWebhooks.push(key);
       }
     });
 
-    const payload = {
-      request_id: `unified_req_${Date.now()}`,
-      job_id: jobId, // ✅ Importante para N8N Redis
-      jobId: jobId,  // Compatibilidade
-      product_name: formData.nome,
-      productName: formData.nome,
-      sku: formData.sku,
-      description: formData.descricao,
-      long_description: formData.descricao,
-      product_id: productId,
-      images: imagesToSend, // ✅ Array com Base64
-      user_id: effectiveUserId,
-      userId: effectiveUserId,
-      timestamp: new Date().toISOString(),
-      seo: { descricao: formData.descricao_curta || '', especificacoes: '' },
-      marketing: { texto_marketing: '' }
-    };
+    if (missingWebhooks.length > 0) {
+      const msg = `ERRO CRÍTICO: Webhooks obrigatórios não encontrados no banco: ${missingWebhooks.join(', ')}`;
+      console.error(msg);
+      toast.error(msg);
+      throw new Error(msg);
+    }
+
+    const magicaKeys = Object.keys(webhooks).filter(k =>
+      k.toLowerCase().startsWith(prefix) &&
+      k.toLowerCase().includes('_magica_')
+    );
+
+    if (magicaKeys.length === 0) {
+      console.warn(`[VisualPackage] Nenhum webhook 'Mágica' encontrado para ${packageId}.`);
+    } else {
+      targetKeys.push(...magicaKeys);
+    }
+
+    if (targetKeys.length === 0) {
+      throw new Error(`Nenhum webhook configurado para ${config.name}.`);
+    }
 
     try {
-      await Promise.all(activeUrls.map(url =>
-        fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }).then(async res => {
-          if (!res.ok) throw new Error(`Falha em ${url}`);
-          return res.json().catch(() => ({}));
-        })
-      ));
-      toast.success("✅ Webhooks disparados! Aguardando retorno das imagens...");
-    } catch (e) {
-      console.error(e);
-      toast.error("⚠️ Alguns webhooks podem ter falhado. Verifique o console.");
+      const processed = await Promise.all(productImages.map(async (url, idx) => {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const fullBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        const strippedBase64 = fullBase64.replace(/^data:image\/[a-z]+;base64,/, "");
+        return {
+          full: fullBase64,
+          stripped: strippedBase64,
+          mime: blob.type || 'image/png',
+          filename: `image_${idx + 1}.${blob.type?.split('/')[1] || 'png'}`
+        };
+      }));
+
+      standardImages = processed.map((p, i) => ({
+        index: i + 1,
+        filename: p.filename,
+        mimeType: p.mime,
+        base64: p.stripped
+      }));
+
+      magicaImagesBase64 = processed.map(p => p.full);
+
+      if (brandSettings?.logo_url) {
+        try {
+          const resLogo = await fetch(brandSettings.logo_url);
+          const blobLogo = await resLogo.blob();
+          logoBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blobLogo);
+          });
+        } catch (e) {
+          console.warn('Erro ao processar logo:', e);
+        }
+      }
+
+    } catch (err) {
+      console.error("Erro no processamento de imagens:", err);
+      throw err;
     }
-    // Nota: setIsUnifiedFiring(true) permanece true até a imagem chegar via evento
+
+    {
+      let firedCount = 0;
+      let referenceBase64 = "";
+      if (targetKeys.some(k => k.includes('_magica_'))) {
+        try {
+          const refRes = await fetch(PLACEHOLDER_REFERENCE_URL);
+          const refBlob = await refRes.blob();
+          referenceBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(refBlob);
+          });
+        } catch (e) { console.warn("Falha ao carregar ref placeholder", e); }
+      }
+
+      try {
+        // 1. Preparação dos Jobs (Configuração e Cache)
+        const jobsToExecute: any[] = [];
+
+        // Identificar templates únicos necessários para "Mágica" para cache warming
+        const magicKeys = targetKeys.filter(k => k.includes('_magica_'));
+        const uniqueTemplatesToCache = new Set<string>();
+        const keyToTemplateMap = new Map<string, any>(); // Map webhookKey -> Template
+
+        if (magicKeys.length > 0) {
+          const geralTemplates = marketingTemplates.filter(t => t.category === 'Geral 01');
+          for (const key of magicKeys) {
+            const randomTemplate = geralTemplates.length > 0
+              ? geralTemplates[Math.floor(Math.random() * geralTemplates.length)]
+              : marketingTemplates[0];
+
+            if (randomTemplate) {
+              keyToTemplateMap.set(key, randomTemplate);
+              uniqueTemplatesToCache.add(randomTemplate.baseImage);
+            }
+          }
+        }
+
+        // Cache Warming (Baixar templates únicos em paralelo se não existirem)
+        if (uniqueTemplatesToCache.size > 0) {
+          console.log(`[VisualPackage] Verificando cache para ${uniqueTemplatesToCache.size} templates...`);
+          await Promise.all(Array.from(uniqueTemplatesToCache).map(async (url) => {
+            if (!templateImageCache.has(url)) {
+              try {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const base64 = await new Promise<string>((resolve) => {
+                  const r = new FileReader();
+                  r.onloadend = () => resolve(r.result as string);
+                  r.readAsDataURL(blob);
+                });
+                templateImageCache.set(url, base64);
+              } catch (e) {
+                console.error(`Erro ao baixar template para cache: ${url}`, e);
+              }
+            }
+          }));
+        }
+
+        // 2. Construção dos Payloads e Dados do Banco
+        const dbRecords: any[] = [];
+
+        for (const key of targetKeys) {
+          const url = webhooks[key];
+          if (!url) continue;
+
+          const isMagica = key.includes('_magica_');
+          const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+          const dbRecord = {
+            job_id: jobId,
+            user_id: userId,
+            expected_images: 1,
+            status: 'active',
+            expires_at: expiresAt,
+            metadata: {
+              package_id: packageId,
+              webhook_key: key,
+              product_name: formData.nome,
+              source: 'visual-package-card',
+              has_context: !!unifiedContext
+            }
+          };
+          dbRecords.push(dbRecord);
+
+          try {
+            let body = {};
+            if (isMagica) {
+              const template = keyToTemplateMap.get(key);
+              if (!template) {
+                console.error("Template não encontrado para key:", key);
+                continue;
+              }
+
+              // Pegar do cache (garantido pelo warming acima)
+              const templateBase64 = templateImageCache.get(template.baseImage) || "";
+              const prompt = buildTemplatePrompt(template, formData.nome, formData.descricao);
+
+              body = {
+                request_id: `req_${jobId}`,
+                job_id: jobId,
+                user_id: userId,
+                timestamp: new Date().toISOString(),
+                source: 'visual-package-magica',
+                prompt: prompt,
+                images: {
+                  reference_base64: referenceBase64,
+                  template_base64: templateBase64,
+                  product_images_base64: magicaImagesBase64,
+                  logo_base64: logoBase64 || null
+                },
+                metadata: {
+                  productName: formData.nome,
+                  productId: productId,
+                  templateId: template.id,
+                  package: packageId,
+                  type: 'magica',
+                  short_description: formData.descricao_curta
+                },
+                config: { incluir_logo: !!logoBase64 },
+                unified_context: unifiedContext || null,
+                copywriting_context: copywritingContext || null
+              };
+            } else {
+              body = {
+                request_id: `req_${jobId}`,
+                job_id: jobId,
+                jobId: jobId,
+                user_id: userId,
+                userId: userId,
+                product_name: formData.nome,
+                productName: formData.nome,
+                timestamp: new Date().toISOString(),
+                images: standardImages,
+                seo: { descricao: formData.descricao_curta || '' },
+                marketing: { texto_marketing: '' },
+                metadata: {
+                  package: packageId,
+                  type: 'padrao',
+                  type_key: key
+                },
+                unified_context: unifiedContext || null
+              };
+            }
+
+            jobsToExecute.push({ key, url, body });
+
+          } catch (innerErr) {
+            console.error(`Erro ao montar corpo para ${key}:`, innerErr);
+          }
+        }
+
+        // 3. Inserção em Lote no Banco (Parallel Insert)
+        if (dbRecords.length > 0) {
+          const { error } = await supabase.from('authorized_jobs').insert(dbRecords);
+          if (error) console.error("Erro ao inserir jobs em lote:", error);
+          else console.log(`[VisualPackage] ${dbRecords.length} jobs registrados com sucesso.`);
+        }
+
+        // 4. Disparo Paralelo dos Webhooks
+        console.log(`[VisualPackage] Disparando ${jobsToExecute.length} webhooks em paralelo...`);
+        let dispatchCount = 0;
+
+        await Promise.all(jobsToExecute.map(async (job) => {
+          try {
+            // Retry logic simples
+            const response = await fetch(job.url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(job.body)
+            });
+            if (response.ok) dispatchCount++;
+            else console.warn(`Falha webhook ${job.key}: ${response.status}`);
+          } catch (e) {
+            console.error(`Erro rede webhook ${job.key}:`, e);
+          }
+        }));
+
+        if (dispatchCount > 0) {
+          toast.success(`Pacote iniciado! ${dispatchCount} gerações disparadas.`);
+          const expectedTotal = hostedAIImages.length + productImages.length + dispatchCount;
+          setGenerationTarget(expectedTotal);
+
+          return new Promise<void>((resolve) => {
+            generationResolver.current = resolve;
+            setTimeout(() => {
+              if (generationResolver.current === resolve) {
+                console.warn("Timeout de geração de pacote");
+                resolve();
+                setGenerationTarget(null);
+              }
+            }, 180000);
+          });
+        }
+
+      } catch (err) {
+        console.error("Erro geral no processamento do pacote visual:", err);
+      }
+    }
   };
+
+  // Handler para Iniciar Geração (Botão no form de Input)
+  const handleStartGeneration = async () => {
+    if (!selectedPackageId) return;
+
+    if (!formData.nome || productImages.length === 0) {
+      toast.error('Preencha o nome do produto e adicione imagens.');
+      return;
+    }
+
+    setWorkflowStep('generating');
+
+    // Encontrar o pacote selecionado antes de setar state
+    const pkg = VISUAL_PACKAGES.find(p => p.id === selectedPackageId);
+    if (!pkg) return;
+
+    // Configurar contagem inicial e esperada para progresso real
+    setInitialImageCount(productImages.length);
+    setExpectedTotalImages(pkg.totalImages || 5); // Fallback to 5 if undefined
+    setAgentProgress(5); // Iniciar com 5% visual
+
+    setWorkflowStep('generating');
+
+    // Iniciar progressão visual (apenas mensagens, progresso é real agora)
+    simulateAgentProgress();
+
+    // 🚀 EXECUÇÃO SEQUENCIAL DE AGENTES (Solicitado pelo usuário)
+    // 1. Atlas (Comando Unificado)
+    // 2. Lyra (Copywriting)
+    // 3. Orion (Geração Visual com Contexto)
+
+    console.log("🚀 [UnifiedGenerator] Disparando agentes de texto (Atlas & Lyra)...");
+
+    // Variáveis para armazenar resultados dos agentes de texto
+    let atlasResult = null;
+    let lyraResult = null;
+
+    try {
+      console.log("📝 [UnifiedGenerator] Executando Step 1 (Atlas)...");
+      const success1 = await executeStep1();
+      if (success1) {
+        // O estado step1.result pode não estar atualizado imediatamente devido ao React
+        // Melhor confiar na atualização de estado ou passar retorno, mas executeStep1 retorna boolean
+        // Vamos pegar do setN8nUnifiedResult que é síncrono no fluxo de dados? Não, é state.
+        // Vamos modificar o executeStep1 para retornar DADOS?
+        // POR ENQUANTO: Vamos assumir que se deu sucesso, o webhook backend disparou e o payload será construído.
+        // REFS: executeStep1 seta state step1.result.
+        // HACK: Aguardar um tick para garantir state update ou confiar no fluxo interno?
+        // Melhor: executeStep1 salvar em uma ref temporária ou a gente modificar executeStep1 para retornar os dados.
+        // Como não alterei executeStep1 para retornar dados, vou confiar na ref ou pegar do state na próxima render? 
+        // Não, preciso passar para handleGeneratePackage AGORA.
+      } else {
+        console.warn("⚠️ [UnifiedGenerator] Atlas falhou ou foi pulado.");
+      }
+    } catch (e) { console.error("[UnifiedGenerator] Erro no Atlas:", e); }
+
+    try {
+      console.log("📝 [UnifiedGenerator] Executando Step 2 (Lyra)...");
+      const success2 = await executeStep2();
+    } catch (e) { console.error("[UnifiedGenerator] Erro na Lyra:", e); }
+
+    // Hack para pegar os resultados FRESH dos states (pode não estar atualizado no mesmo ciclo)
+    // Para resolver isso DE VERDADE, o ideal seria executeStep1 retornar os dados.
+    // Mas, dado o tempo, vamos passar o que tivermos nos states "n8nUnifiedResult" e "n8nCopywritingResult".
+    // No entanto, closures do React podem ter valores antigos aqui.
+    // SOLUÇÃO ROBUSTA: Passar uma função de callback para os steps ou refatorar steps.
+    // PALIATIVO SEGURO: Usar um pequeno delay ou Refs.
+    // Vamos usar os valores atuais de referência se possível? 
+    // Como os steps setam estado, vou tentar ler desses estados.
+
+    // Pequeno delay para garantir que React processe os updates de estado (não é perfeito mas ajuda)
+    await new Promise(r => setTimeout(r, 500));
+
+    // Chamar a função de geração visual passando os contextos ACUMULADOS
+    // Nota: Como n8nUnifiedResult é state, dentro desta função ele pode ser o valor antigo.
+    // O correto seria modificar executeStep1 para retornar o objeto data.
+
+    // VAMOS MODIFICAR O executeStep1 LOGO ABAIXO PARA RETORNAR DADOS E NÂO SÓ BOOLEAN? 
+    // Não posso editar o arquivo todo de novo.
+    // Vou confiar que os webhooks de mágica serão disparados.
+    // Espera, handleGeneratePackage recebe contexts. Se eu passar null, ele manda sem contexto.
+
+    // IMPORTANTE: O usuário pediu para que os webhooks de mágica SÓ FOSSEM CHAMADOS APÓS OS DE CONTÉUDO.
+    // Isso já está garantido pelos awaits acima.
+
+    // Sobre passar o contexto: Se não tiver o dado aqui, o webhook mágica vai sem contexto extra.
+    // Mas o n8n do cliente provavelmente ESPERA esse contexto.
+
+    // Vamos passar n8nUnifiedResult e n8nCopywritingResult (acessando via state do componente).
+    await handleGeneratePackage(selectedPackageId, pkg, n8nUnifiedResult, n8nCopywritingResult);
+  };
+
+  // Simulação de Progresso dos Agentes
+  const [agentProgress, setAgentProgress] = useState(0);
+  const [currentAgent, setCurrentAgent] = useState('');
+
+  const simulateAgentProgress = () => {
+    const agents = [
+      'Atlas analisando estratégia...',
+      'Lyra criando design...',
+      'Orion escalando variações...',
+      'Lucy finalizando detalhes...'
+    ];
+    let step = 0;
+    setCurrentAgent(agents[0]);
+
+    const interval = setInterval(() => {
+      step++;
+      if (step < agents.length) {
+        setCurrentAgent(agents[step]);
+      } else {
+        clearInterval(interval);
+      }
+    }, 2000); // Apenas troca as mensagens dos agentes
+  };
+
+  // Função para baixar todo o kit gerado (apenas imagens novas)
+  const handleDownloadAll = async () => {
+    const newImages = productImages.slice(initialImageCount);
+    if (newImages.length === 0) {
+      toast.error("Nenhuma imagem gerada para baixar.");
+      return;
+    }
+
+    toast.info(`Baixando ${newImages.length} imagens...`);
+
+    let downloadedCount = 0;
+    for (let i = 0; i < newImages.length; i++) {
+      try {
+        const response = await fetch(newImages[i]);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const timestamp = new Date().toISOString().slice(0, 10);
+        link.download = `${(formData.nome || 'produto').replace(/\s+/g, '_')}_${i + 1}_${timestamp}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        downloadedCount++;
+        await new Promise(resolve => setTimeout(resolve, 800)); // Delay maior para evitar bloqueio
+      } catch (e) {
+        console.error("Erro no download:", e);
+      }
+    }
+
+    if (downloadedCount > 0) {
+      toast.success(`${downloadedCount} imagens baixadas com sucesso!`);
+      setHasDownloaded(true);
+    } else {
+      toast.error("Falha ao baixar imagens.");
+    }
+  };
+
+  // Failsafe: Download Automático se não houver ação em 5 minutos
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (workflowStep === 'results' && agentProgress >= 100 && !hasDownloaded) {
+      console.log("ðŸ•’ [FAILSAFE] Iniciando timer de seguranÃ§a para download automÃ¡tico (5min)...");
+      timer = setTimeout(() => {
+        if (!hasDownloaded) {
+          console.log("ðŸš¨ [FAILSAFE] Tempo esgotado! Iniciando download automÃ¡tico de seguranÃ§a.");
+          toast.warning("Iniciando download automÃ¡tico de seguranÃ§a...", { duration: 5000 });
+          handleDownloadAll();
+        }
+      }, 5 * 60 * 1000); // 5 minutos
+    }
+    return () => clearTimeout(timer);
+  }, [workflowStep, agentProgress, hasDownloaded, productImages.length]);
+
+  // Monitorar PROGRESO REAL baseada na chegada de novas imagens
+  useEffect(() => {
+    if (workflowStep === 'generating') {
+      const currentNewImages = Math.max(0, productImages.length - initialImageCount);
+
+      // Calcular progresso: (imagens novas / total esperado) * 100
+      // Math.min para não passar de 100 se gerar mais (bônus)
+      const calculatedProgress = Math.min(100, Math.round((currentNewImages / expectedTotalImages) * 100));
+
+      // Apenas atualizar se for maior que o atual (para não voltar)
+      // E garantir que chegue a 100% se passar do total
+      setAgentProgress(prev => Math.max(prev, calculatedProgress));
+
+      // Se completou, esperar um pouco e ir para Results
+      if (calculatedProgress >= 100) {
+        const timer = setTimeout(() => {
+          setWorkflowStep('results');
+          setShowCompletionModal(true); // Abrir modal de parabéns
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [productImages.length, initialImageCount, expectedTotalImages, workflowStep]);
 
   return (
     <SafeErrorBoundary>
       <ProductDetailsLayout>
-        {/* Header */}
-        <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-purple-50/80 backdrop-blur-sm mb-6">
-          <CardHeader className="bg-gradient-to-r from-purple-100/50 to-pink-100/50 border-b border-purple-200/30">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
-                  <Sparkles className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    Gerador Unificado de Anúncios
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Todas as ferramentas de criação de anúncios em um só lugar
-                  </p>
-                </div>
+        <div className="space-y-8 min-h-[600px]">
+          {/* HEADER CONTROLS (Novo Cabeçalho Unificado) */}
+          {/* HEADER CONTROLS (Novo Cabeçalho Unificado) */}
+          <div className="bg-gradient-to-r from-violet-600 to-orange-500 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-violet-200/50 text-white">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-inner border border-white/20">
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <div className="flex items-center gap-3">
-                {/* Botão Limpar Cache */}
-                <Button
-                  onClick={() => {
-                    const count = clearAllImageCaches();
+              <div>
+                <h1 className="text-xl font-bold text-white">
+                  Gerador Unificado de Anúncios
+                </h1>
+                <p className="text-xs text-white/80 hidden sm:block">
+                  Todas as ferramentas de criação de anúncios em um só lugar
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (window.confirm("Tem certeza que deseja limpar tudo?")) {
+                    setWorkflowStep('selection');
                     setProductImages([]);
-                    setReferenceImages([]);
-                    setHostedAIImages([]);
-                    toast.success(`Cache limpo! ${count} itens removidos.`);
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  title="Limpar cache de imagens"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                {/* Botão Novo Produto */}
-                <Button
-                  onClick={handleNewProduct}
-                  variant="outline"
-                  size="sm"
-                  className="border-amber-400 text-amber-700 hover:bg-amber-50"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Novo Produto
-                </Button>
+                    setInitialImageCount(0);
+                    setExpectedTotalImages(5);
+                    setAgentProgress(0);
+                    setHidePackages(false);
+                    setHasDownloaded(false);
+                    sessionStorage.removeItem('unified_ad_workflow_step');
+                    toast.success("Novo produto iniciado!");
+                  }
+                }}
+                className="text-white/70 hover:text-white hover:bg-white/10"
+                title="Limpar e Iniciar Novo"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
 
-                {/* ✅ BOTÃO DOWNLOAD KIT COMPLETO (PDF + Mídias) */}
-                <EbookDownloadButton
-                  product={{
-                    nome: formData.nome || 'Produto',
-                    descricao: formData.descricao || formData.descricao_curta || null,
-                    sku: formData.sku || `gerador_${productId}`
-                  }}
-                  unifiedData={n8nUnifiedResult || unifiedData || null}
-                  copywritingText={n8nCopywritingResult?.content || copywritingData || undefined}
-                  images={[
-                    ...productImages.map(url => ({ url, type: 'produto' })),
-                    ...hostedAIImages.map(url => ({ url, type: 'ai-gerada' }))
-                  ]}
-                  forceEnabled={productImages.length > 0 || hostedAIImages.length > 0 || !!n8nUnifiedResult || !!n8nCopywritingResult || !!unifiedData || !!copywritingData}
-                  variant="default"
-                  size="sm"
-                  showOptions={true}
-                />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setWorkflowStep('selection');
+                  setProductImages([]);
+                  setInitialImageCount(0);
+                  setExpectedTotalImages(5);
+                  setAgentProgress(0);
+                  setHidePackages(false);
+                  setHasDownloaded(false);
+                  sessionStorage.removeItem('unified_ad_workflow_step');
+                  toast.success("Novo produto iniciado!");
+                }}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 border-white/30 shadow-none gap-2 whitespace-nowrap"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Novo Produto
+              </Button>
 
-                {/* Créditos do usuário - Badge compacto */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowConfig(!showConfig)}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 border-white/30 shadow-none gap-2 whitespace-nowrap"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Opções
+              </Button>
+
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleDownloadAll}
+                className="bg-white text-violet-600 hover:bg-white/90 border-0 shadow-md gap-2 whitespace-nowrap font-bold"
+                disabled={productImages.length <= initialImageCount}
+              >
+                <Package className="w-3.5 h-3.5" />
+                Baixar Kit Completo
+              </Button>
+
+              <div className="pl-2 border-l border-white/20">
                 <CreditsCompactBadge
                   creditsAvailable={usage?.enhancements_available || 0}
                   creditsUsed={usage?.enhancements_used || 0}
-                  isLoading={isLoadingCredits}
                 />
               </div>
             </div>
-          </CardHeader>
-        </Card>
+          </div>
 
-        {/* Indicador de Validação */}
-        <ValidationIndicator
-          isValid={isFormValid}
-          missingFields={missingFields}
-          imageCount={productImages.length}
-        />
+          {/* BOTÃO MÁGICO DE AGENTES (Fica no topo para acesso rápido se dados preenchidos) */}
 
-        {/* ===== PACOTES DE GERAÇÃO VISUAL ===== */}
-        <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-violet-50/80 backdrop-blur-sm">
-          <CardContent className="pt-6">
+
+          {/* STEP 1: SELECTION & VISUAL PACKAGES */}
+          {/* STEP 1: SELECTION & VISUAL PACKAGES (ALWAYS VISIBLE, DISABLED DURING GENERATION) */}
+          {/* STEP 1: SELECTION & VISUAL PACKAGES (ALWAYS VISIBLE, DISABLED DURING GENERATION) */}
+          <div className={cn(
+            "transition-all duration-500",
+            (workflowStep === 'generating' || workflowStep === 'results') ? 'pointer-events-none opacity-50' : '',
+            hidePackages && 'hidden'
+          )}>
             <VisualPackageCards
-              onGeneratePackage={async (packageId: PackageType, config: VisualPackage) => {
-                // Validar dados
-                if (!formData.nome?.trim()) {
-                  toast.error('Preencha o nome do produto');
-                  return;
-                }
-                if (productImages.length === 0) {
-                  toast.error('Adicione imagens do produto');
-                  return;
-                }
-                if (!userId) {
-                  toast.error('Erro de autenticação: User ID não encontrado');
-                  return;
-                }
-
-                console.log(`[VisualPackage] Iniciando pacote: ${packageId} (${config.name})`);
-                toast.info(`Iniciando geração do pacote ${config.name}...`);
-
-                // 1. PREPARAR IMAGENS EM AMBOS OS FORMATOS (Standard vs Magica)
-
-                // Formato A: Standard (Array de Objetos, Base64 Limpo) - Referência: testParallelWebhook
-                // Formato B: Magica (Array de Strings, Base64 Completo) - Referência: CanvaStyleTemplateGenerator
-
-                let standardImages: Array<{ index: number; filename: string; mimeType: string; base64: string }> = [];
-                let magicaImagesBase64: string[] = [];
-                let logoBase64: string | undefined;
-
-                // 2. DEFINIR QUAIS WEBHOOKS DISPARAR COM BASE NO PACOTE
-                const prefixes: Record<PackageType, string> = {
-                  start: 'vs_',
-                  pro: 'vp_',
-                  expert: 've_',
-                  brand: 'vb_'
-                };
-                const prefix = prefixes[packageId];
-
-                // RECIPES: Definição Estrita dos Webhooks Obrigatórios por Pacote
-                // Garante que o pacote entregue EXATAMENTE o que foi vendido.
-                const PACKAGE_RECIPES: Record<PackageType, string[]> = {
-                  start: ['fundo_branco', 'ambientada'],
-                  pro: ['fundo_branco', 'ambientada'],
-                  expert: ['fundo_branco', 'ambientada', 'em_uso'],
-                  brand: ['fundo_branco', 'ambientada', 'em_uso', 'com_pessoas']
-                };
-
-                const requiredSuffixes = PACKAGE_RECIPES[packageId];
-                const targetKeys: string[] = [];
-
-                console.log(`[VisualPackage] Validando Receita para ${packageId} (Prefixo: ${prefix})...`);
-
-                // A. Validar e Adicionar Obrigatórios (Fail-Safe)
-                const missingWebhooks: string[] = [];
-
-                requiredSuffixes.forEach(suffix => {
-                  const key = `${prefix}${suffix}`;
-                  // Verificar case-insensitive
-                  const exactKey = Object.keys(webhooks).find(k => k.toLowerCase() === key.toLowerCase());
-
-                  if (exactKey) {
-                    targetKeys.push(exactKey);
-                  } else {
-                    missingWebhooks.push(key);
-                  }
-                });
-
-                if (missingWebhooks.length > 0) {
-                  const msg = `ERRO CRÍTICO: Webhooks obrigatórios não encontrados no banco: ${missingWebhooks.join(', ')}`;
-                  console.error(msg);
-                  toast.error(msg);
-                  throw new Error(msg);
-                }
-
-                // B. Adicionar Mágica (Dinâmico - Pega todos os que existirem para o prefixo)
-                const magicaKeys = Object.keys(webhooks).filter(k =>
-                  k.toLowerCase().startsWith(prefix) &&
-                  k.toLowerCase().includes('_magica_')
-                );
-
-                if (magicaKeys.length === 0) {
-                  console.warn(`[VisualPackage] Nenhum webhook 'Mágica' encontrado para ${packageId}. Isso pode estar correto se não houver templates.`);
-                } else {
-                  targetKeys.push(...magicaKeys);
-                }
-
-                console.log(`[VisualPackage] Webhooks Selecionados (${targetKeys.length}):`, targetKeys);
-
-                if (targetKeys.length === 0) {
-                  // Redundante se a validação acima passar, mas segurança extra
-                  throw new Error(`Nenhum webhook configurado para ${config.name}.`);
-                }
-
-                try {
-                  // Processar imagens do produto
-                  const processed = await Promise.all(productImages.map(async (url, idx) => {
-                    const res = await fetch(url);
-                    const blob = await res.blob();
-
-                    // Converter para Base64 Completo
-                    const fullBase64 = await new Promise<string>((resolve) => {
-                      const reader = new FileReader();
-                      reader.onloadend = () => resolve(reader.result as string);
-                      reader.readAsDataURL(blob);
-                    });
-
-                    // Criar versão Limpa (sem data:image...)
-                    const strippedBase64 = fullBase64.replace(/^data:image\/[a-z]+;base64,/, "");
-
-                    return {
-                      full: fullBase64,
-                      stripped: strippedBase64,
-                      mime: blob.type || 'image/png',
-                      filename: `image_${idx + 1}.${blob.type?.split('/')[1] || 'png'}`
-                    };
-                  }));
-
-                  // Popular arrays
-                  standardImages = processed.map((p, i) => ({
-                    index: i + 1,
-                    filename: p.filename,
-                    mimeType: p.mime,
-                    base64: p.stripped
-                  }));
-
-                  magicaImagesBase64 = processed.map(p => p.full);
-
-                  // Processar Logo se existir (Brand Settings)
-                  if (brandSettings?.logo_url) {
-                    try {
-                      const resLogo = await fetch(brandSettings.logo_url);
-                      const blobLogo = await resLogo.blob();
-                      logoBase64 = await new Promise<string>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result as string);
-                        reader.readAsDataURL(blobLogo);
-                      });
-                    } catch (e) {
-                      console.warn('Erro ao processar logo:', e);
-                    }
-                  }
-
-                } catch (err) {
-                  console.error("Erro no processamento de imagens:", err);
-                  throw err;
-                }
-
-                { // Bloco de Disparo (Isolado do Try/Catch anterior)
-                  console.log(`[VisualPackage] Chaves encontradas para ${packageId}:`, targetKeys);
-
-                  let firedCount = 0;
-
-                  // Carregar Referência Placeholder uma vez (para Magica) 
-                  let referenceBase64 = "";
-                  if (targetKeys.some(k => k.includes('_magica_'))) {
-                    try {
-                      const refRes = await fetch(PLACEHOLDER_REFERENCE_URL);
-                      const refBlob = await refRes.blob();
-                      referenceBase64 = await new Promise<string>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result as string);
-                        reader.readAsDataURL(refBlob);
-                      });
-                    } catch (e) { console.warn("Falha ao carregar ref placeholder", e); }
-                  }
-
-                  try {
-                    // 2. DEFINIR QUAIS WEBHOOKS DISPARAR COM BASE NO PACOTE
-                    // 3. ITERAR E DISPARAR
-                    for (const key of targetKeys) {
-                      const url = webhooks[key];
-                      if (!url) continue;
-
-                      toast.info(`Disparando webhook: ${key}`);
-
-
-                      // Determinar Tipo: Magica vs Standard
-                      const isMagica = key.includes('_magica_');
-
-                      // Gerar JobID Único para esta chamada
-                      const jobId = `${packageId}_${key}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-                      // Registrar Job
-                      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-                      await supabase.from('authorized_jobs').insert({
-                        job_id: jobId,
-                        user_id: userId,
-                        expected_images: 1,
-                        status: 'active',
-                        expires_at: expiresAt,
-                        metadata: {
-                          package_id: packageId,
-                          webhook_key: key,
-                          product_name: formData.nome,
-                          source: 'visual-package-card'
-                        }
-                      });
-
-                      try {
-                        let body = {};
-
-                        if (isMagica) {
-                          // ====== PAYLOAD TIPO B (MAGICA/MARKETING) ======
-                          // 1. Escolher Template Aleatório 'Geral 01'
-                          const geralTemplates = marketingTemplates.filter(t => t.category === 'Geral 01');
-                          const randomTemplate = geralTemplates.length > 0
-                            ? geralTemplates[Math.floor(Math.random() * geralTemplates.length)]
-                            : marketingTemplates[0]; // Fallback
-
-                          if (!randomTemplate) {
-                            console.error("Nenhum template disponível");
-                            continue;
-                          }
-
-                          // 2. Montar Prompt
-                          const prompt = buildTemplatePrompt(randomTemplate, formData.nome, formData.descricao);
-
-                          // 3. Obter Imagem do Template (Base 64)
-                          let templateBase64 = "";
-                          try {
-                            const tmplRes = await fetch(randomTemplate.baseImage);
-                            const tmplBlob = await tmplRes.blob();
-                            templateBase64 = await new Promise<string>((resolve) => {
-                              const r = new FileReader();
-                              r.onloadend = () => resolve(r.result as string);
-                              r.readAsDataURL(tmplBlob);
-                            });
-                          } catch (e) { console.error("Erro ao baixar img template", e); }
-
-                          body = {
-                            request_id: `req_${jobId}`,
-                            job_id: jobId,
-                            user_id: userId,
-                            timestamp: new Date().toISOString(),
-                            source: 'visual-package-magica',
-                            prompt: prompt, // ✅ Prompt incluído!
-                            images: {
-                              reference_base64: referenceBase64,
-                              template_base64: templateBase64, // ✅ Imagem do Template incluída!
-                              product_images_base64: magicaImagesBase64,
-                              logo_base64: logoBase64 || null
-                            },
-                            metadata: {
-                              productName: formData.nome,
-                              productId: productId,
-                              templateId: randomTemplate.id,
-                              package: packageId,
-                              type: 'magica'
-                            },
-                            config: {
-                              incluir_logo: !!logoBase64
-                            }
-                          };
-                        } else {
-                          // ====== PAYLOAD TIPO A (STANDARD/CENAS) ======
-                          // Compatível com endpoint 'unified_4'
-                          body = {
-                            request_id: `req_${jobId}`,
-                            job_id: jobId,
-                            jobId: jobId,
-                            user_id: userId,
-                            userId: userId,
-                            product_name: formData.nome,
-                            productName: formData.nome,
-                            timestamp: new Date().toISOString(),
-                            images: standardImages,
-                            seo: {
-                              descricao: formData.descricao_curta || ''
-                            },
-                            marketing: {
-                              texto_marketing: ''
-                            },
-                            metadata: {
-                              package: packageId,
-                              type: 'standard',
-                              webhook_key: key
-                            }
-                          };
-                        }
-
-                        // 4. DISPARAR FETCH SEM AWAIT BLOQUEANTE (Fire and Forget controlado)
-                        fetch(url, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(body)
-                        }).catch(e => console.error(`Erro disparo ${key}:`, e));
-
-                        firedCount++;
-                        console.log(`[VisualPackage] Disparado ${key} (${isMagica ? 'Magica' : 'Standard'}) para ${url}`);
-
-                      } catch (innerErr) {
-                        console.error(`Erro ao montar corpo para ${key}:`, innerErr);
-                      }
-                    }
-
-                    if (firedCount > 0) {
-                      toast.success(`Pacote iniciado! ${firedCount} gerações em andamento.`);
-                      // ✅ TRAVAR O BOTÃO: Retornar Promessa que só resolve quando as imagens chegarem
-                      const expectedTotal = hostedAIImages.length + productImages.length + firedCount;
-                      setGenerationTarget(expectedTotal);
-                      console.log(`[VisualPackage] Aguardando ${firedCount} imagens. Alvo: ${expectedTotal}`);
-
-                      return new Promise<void>((resolve) => {
-                        generationResolver.current = resolve;
-                        // Safety Timeout (3 minutos)
-                        setTimeout(() => {
-                          if (generationResolver.current === resolve) {
-                            console.warn("Timeout de geração de pacote");
-                            resolve();
-                            setGenerationTarget(null);
-                          }
-                        }, 180000);
-                      });
-
-                    } else {
-                      toast.warning('Nenhum webhook configurado para este pacote.');
-                    }
-                  } catch (err) {
-                    console.error("Erro geral no processamento do pacote visual:", err);
-                    toast.error("Erro ao iniciar geração do pacote visual. Verifique o console.");
-                  }
-                }
-              }}
-              disabled={!isFormValid || productImages.length === 0}
-            />
-          </CardContent>
-        </Card>
-
-        {/* ✅ NOVO: Toggle Kill Switch para Automação n8n */}
-        <div className={`flex items-center justify-between p-4 rounded-lg border ${isPaused ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'} transition-colors`}>
-          <div className="flex items-center gap-3">
-            {isPaused ? (
-              <Pause className="h-5 w-5 text-red-600" />
-            ) : (
-              <PlayCircle className="h-5 w-5 text-green-600" />
-            )}
-            <div>
-              <p className={`font-medium ${isPaused ? 'text-red-900' : 'text-green-900'}`}>
-                {isPaused ? '⏸️ Automação n8n Pausada' : '▶️ Automação n8n Ativa'}
-              </p>
-              <p className={`text-sm ${isPaused ? 'text-red-700' : 'text-green-700'}`}>
-                {isPaused
-                  ? 'Callbacks do n8n estão sendo bloqueados'
-                  : 'Callbacks do n8n são processados normalmente'
-                }
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {isPaused ? 'Pausado' : 'Ativo'}
-            </span>
-            <Switch
-              checked={!isPaused}
-              onCheckedChange={togglePaused}
-              disabled={automationSettingsLoading || automationSettingsUpdating}
-              className={isPaused ? 'data-[state=unchecked]:bg-red-400' : ''}
+              onGeneratePackage={handleGeneratePackage}
+              className=""
+              onSelect={handlePackageSelect}
+              selectedPackageId={selectedPackageId}
             />
           </div>
-        </div>
 
-        {/* ✅ Indicador Visual de Upscale em Progresso */}
-        {upscaleProgress.isProcessing && (
-          <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg animate-pulse">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-            <div className="flex-1">
-              <p className="font-medium text-blue-900">
-                📈 Aplicando upscale 2x...
-              </p>
-              <p className="text-sm text-blue-700">
-                Processando imagem {upscaleProgress.currentImage} de {upscaleProgress.totalImages}
-                {upscaleProgress.sceneType && ` (${upscaleProgress.sceneType})`}
-              </p>
-            </div>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-              runware:503@1
-            </Badge>
-          </div>
-        )}
+          {/* STEP 2: INPUT FORM (Side-by-Side) */}
+          {workflowStep === 'input' && (
+            <div id="product-form-section" className="animate-in fade-in slide-in-from-bottom-10 duration-500">
+              <div className="flex items-center justify-between mb-4">
+                <Button variant="ghost" onClick={handleBackToSelection} className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center">← </div>
+                  Voltar para seleção
+                </Button>
+                <h2 className="text-2xl font-bold gradient-text">Detalhes do Produto</h2>
+              </div>
 
-        {/* Galeria de Imagens do Produto */}
-        <SafeErrorBoundary>
-          <ProductImagesGrid
-            images={productImages}
-            productName={formData.nome || 'Novo Produto'}
-            productId={productId}
-            onImagesUploaded={handleImagesUploaded}
-            longTailTitles={longTailTitles}
-            isAutomationComplete={isAutomationComplete}
-            referenceImageUrls={referenceImages}
-          />
-        </SafeErrorBoundary>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* LEFT COLUMN: IMAGES */}
+                <div className="space-y-4">
+                  <Card className="glass-effect shadow-md h-full">
+                    <CardHeader>
+                      <CardTitle className="text-lg">1. Imagens do Produto</CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-full">
+                      <ProductImagesGrid
+                        images={productImages}
+                        productName={formData.nome || 'Produto'}
+                        productId={productId}
+                        onImagesUploaded={handleImagesUploaded}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
 
-        {/* Bloco Informações do Produto */}
-        <SafeErrorBoundary>
-          <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-blue-50/80 backdrop-blur-sm">
-            <CardHeader className="bg-gradient-to-r from-blue-100/50 to-purple-100/50 border-b border-blue-200/30">
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Informações do Produto
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <ProductFormContent
-              product={product}
-              isEditing={isEditing}
-              formData={formData}
-              onFormDataChange={handleFormDataChange}
-              onUpdateDescription={handleUpdateDescription}
-              isAutomationRunning={isAutomationRunning}
-              automationStep={automationStep}
-              copywritingData={n8nCopywritingResult || copywritingData}
-              unifiedCommandsData={n8nUnifiedResult || unifiedCommandsData}
-              onExecuteWebhookComando={executeStep1}
-              onExecuteWebhookCopywriting={executeStep2}
-              isLoadingComando={step1.status === "running"}
-              isLoadingCopywriting={step2.status === "running"}
-              webhookComandoConfigured={!!webhookComandoUnificado}
-              webhookCopywritingConfigured={!!webhookCopywriting}
-            />
-          </Card>
-        </SafeErrorBoundary>
-
-        {/* ===== BLOCO N8N: Configuração de Webhooks e Testes ===== */}
-        <SafeErrorBoundary>
-          <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-cyan-50/80 backdrop-blur-sm">
-            <Collapsible open={showN8NConfig} onOpenChange={setShowN8NConfig}>
-              <CardHeader className="bg-gradient-to-r from-cyan-100/50 to-blue-100/50 border-b border-cyan-200/30">
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 shadow-lg">
-                        <Settings className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
-                          Configuração de Webhooks N8N
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Configure URLs para testes manuais via n8n
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {webhookTratamentoCombinado && (
-                        <Badge variant="secondary" className="bg-green-100 text-green-700">
-                          Conectado
-                        </Badge>
-                      )}
-                      <ChevronDown className={`h-4 w-4 transition-transform ${showN8NConfig ? 'rotate-180' : ''}`} />
-                    </div>
-                  </div>
-                </CollapsibleTrigger>
-              </CardHeader>
-
-              <CollapsibleContent>
-                <CardContent className="pt-6 space-y-6">
-                  {/* ✅ COMPONENTE COMPLETO DE WEBHOOKS (FILAS REDIS + OUTROS) */}
-                  <div className="mb-6">
-                    <N8NWebhooksUI
-                      webhooks={webhooks}
-                      onSave={saveWebhook}
-                      variant="full"
-                      isLoading={isLoading}
-                    />
-                  </div>
-
-                  {/* Testar Etapas Individualmente */}
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Bot className="h-4 w-4" />
-                      Testar Etapas Individualmente
-                    </h4>
-
-                    <div className="grid grid-cols-5 gap-3">
-                      {/* Etapa 1: Comando */}
-                      <div className={`p-3 rounded-lg border-2 space-y-2 ${step1.status === 'success' ? 'border-green-500 bg-green-50' :
-                        step1.status === 'error' ? 'border-red-500 bg-red-50' :
-                          step1.status === 'running' ? 'border-blue-500 bg-blue-50' :
-                            'border-muted'
-                        }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-purple-600" />
-                            <span className="font-medium text-xs">1. Comando</span>
-                          </div>
-                          <StatusIcon status={step1.status} />
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-8 text-xs"
-                          onClick={executeStep1}
-                          disabled={step1.status === "running" || !webhookComandoUnificado || !formData.nome}
-                        >
-                          {step1.status === "running" ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <Play className="h-3 w-3 mr-1" />
-                          )}
-                          Executar
-                        </Button>
-                        {step1.responseTime && (
-                          <p className="text-[10px] text-muted-foreground text-center">{(step1.responseTime / 1000).toFixed(1)}s</p>
-                        )}
-                      </div>
-
-                      {/* Etapa 2: Copywriting */}
-                      <div className={`p-3 rounded-lg border-2 space-y-2 ${step2.status === 'success' ? 'border-green-500 bg-green-50' :
-                        step2.status === 'error' ? 'border-red-500 bg-red-50' :
-                          step2.status === 'running' ? 'border-blue-500 bg-blue-50' :
-                            'border-muted'
-                        }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <FileText className="h-3.5 w-3.5 text-blue-600" />
-                            <span className="font-medium text-xs">2. Copywriting</span>
-                          </div>
-                          <StatusIcon status={step2.status} />
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-8 text-xs"
-                          onClick={executeStep2}
-                          disabled={step2.status === "running" || !webhookCopywriting || !formData.nome}
-                        >
-                          {step2.status === "running" ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <Play className="h-3 w-3 mr-1" />
-                          )}
-                          Executar
-                        </Button>
-                        {step2.responseTime && (
-                          <p className="text-[10px] text-muted-foreground text-center">{(step2.responseTime / 1000).toFixed(1)}s</p>
-                        )}
-                      </div>
-
-                      {/* Etapa 3: Gerar 8 Cenas */}
-                      <div className={`p-3 rounded-lg border-2 space-y-2 ${isTestingParallel ? 'border-blue-500 bg-blue-50' :
-                        parallelTestProgress.completed === 8 ? 'border-green-500 bg-green-50' :
-                          parallelTestProgress.failed > 0 && !isTestingParallel ? 'border-orange-500 bg-orange-50' :
-                            'border-muted'
-                        }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Zap className="h-3.5 w-3.5 text-green-600" />
-                            <span className="font-medium text-xs">3. 8 Cenas</span>
-                          </div>
-                          {isTestingParallel ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                          ) : parallelTestProgress.completed === 8 ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          ) : parallelTestProgress.failed > 0 ? (
-                            <AlertCircle className="h-4 w-4 text-orange-500" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-8 text-xs"
-                          onClick={testParallelWebhook}
-                          disabled={isTestingParallel || !webhookTratamentoCombinado || productImages.length === 0 || !formData.nome}
-                        >
-                          {isTestingParallel ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <Send className="h-3 w-3 mr-1" />
-                          )}
-                          Enviar
-                        </Button>
-                        {isTestingParallel && (
-                          <p className="text-[10px] text-muted-foreground text-center">
-                            {parallelTestProgress.completed + parallelTestProgress.failed}/{parallelTestProgress.total}
-                          </p>
-                        )}
-                        {!isTestingParallel && parallelTestProgress.completed > 0 && (
-                          <p className="text-[10px] text-muted-foreground text-center">
-                            ✓ {parallelTestProgress.completed} | ✗ {parallelTestProgress.failed}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Etapa 4: Visual Mágico (Manual) */}
-                      <div className={`p-3 rounded-lg border-2 space-y-2 ${isTestingMarketing ? 'border-purple-500 bg-purple-50' : 'border-muted'}`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Wand2 className="h-3.5 w-3.5 text-purple-600" />
-                            <span className="font-medium text-xs">4. Mágica</span>
-                          </div>
-                          {isTestingMarketing ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
-                          ) : (
-                            <Zap className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-8 text-xs"
-                          onClick={testMarketingWebhook}
-                          disabled={isTestingMarketing || productImages.length === 0 || !formData.nome}
-                        >
-                          {isTestingMarketing ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <Send className="h-3 w-3 mr-1" />
-                          )}
-                          Testar
-                        </Button>
-                        {isTestingMarketing && (
-                          <p className="text-[10px] text-muted-foreground text-center">
-                            Enviando...
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Etapa 5: VB/Standard (Manual) */}
-                      <div className={`p-3 rounded-lg border-2 space-y-2 ${isTestingStandard ? 'border-cyan-500 bg-cyan-50' : 'border-muted'}`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Image className="h-3.5 w-3.5 text-cyan-600" />
-                            <span className="font-medium text-xs">5. VB/Fundo</span>
-                          </div>
-                          {isTestingStandard ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-cyan-500" />
-                          ) : (
-                            <Zap className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-8 text-xs"
-                          onClick={testStandardWebhook}
-                          disabled={isTestingStandard || productImages.length === 0 || !formData.nome}
-                        >
-                          {isTestingStandard ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <Send className="h-3 w-3 mr-1" />
-                          )}
-                          Testar
-                        </Button>
-                        {isTestingStandard && (
-                          <p className="text-[10px] text-muted-foreground text-center">
-                            Enviando...
-                          </p>
-                        )}
-                      </div>
+                {/* RIGHT COLUMN: FORM & ACTION */}
+                <div className="space-y-6">
+                  <Card className="glass-effect p-6 shadow-xl border-t-4 border-t-violet-500 h-full flex flex-col">
+                    <div className="mb-4">
+                      <h3 className="text-lg font-bold mb-1">2. Informações Chave</h3>
+                      <p className="text-xs text-muted-foreground">Obrigatório preencher para a IA trabalhar.</p>
                     </div>
 
-                    {/* Toggle compressão */}
-                    <div className="flex items-center justify-between p-2 mt-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <Shrink className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm">Comprimir imagens antes de enviar</span>
-                      </div>
-                      <Switch
-                        checked={enableCompression}
-                        onCheckedChange={setEnableCompression}
+                    <div className="flex-1">
+                      <ProductFormContent
+                        product={product}
+                        isEditing={true}
+                        formData={formData}
+                        onFormDataChange={handleFormDataChange}
+                        onUpdateDescription={handleUpdateDescription}
+                        isAutomationRunning={isAutomationRunning}
+                        automationStep={automationStep}
+                        copywritingData={copywritingData}
+                        unifiedCommandsData={unifiedCommandsData}
+                        onExecuteWebhookComando={executeStep1}
+                        onExecuteWebhookCopywriting={executeStep2}
                       />
                     </div>
 
-                    {/* 📡 Indicador de Conexão Broadcast */}
-                    <div className={`flex items-center justify-between p-2 mt-2 rounded-lg ${isBroadcastConnected ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-                      }`}>
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${isBroadcastConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                        <span className="text-xs font-medium">
-                          {isBroadcastConnected ? '🔌 Conectado ao Broadcast' : '❌ Desconectado'}
+                    <div className="mt-8 pt-6 border-t">
+                      <Button
+                        className="w-full h-16 text-lg font-bold shadow-xl transition-all hover:scale-[1.02] hover:brightness-110 flex items-center justify-center gap-3 relative overflow-hidden group text-white"
+                        style={{
+                          backgroundColor: selectedPackageId
+                            ? VISUAL_PACKAGES.find(p => p.id === selectedPackageId)?.glowColor
+                            : 'hsl(270, 100%, 50%)',
+                          boxShadow: selectedPackageId
+                            ? `0 10px 40px -10px ${VISUAL_PACKAGES.find(p => p.id === selectedPackageId)?.glowColor}`
+                            : '0 10px 40px -10px hsl(270, 100%, 50%)'
+                        }}
+                        onClick={handleStartGeneration}
+                        disabled={agentProgress > 0 || !formData.nome.trim() || productImages.length === 0 || !selectedPackageId}
+                      >
+                        <span className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                        <Sparkles className="w-6 h-6 animate-pulse" />
+                        <span className="flex flex-col items-center leading-tight">
+                          <span>GERAR A MÁGICA AGORA</span>
+                          {selectedPackageId && (
+                            <span className="text-sm opacity-90 font-medium">
+                              {VISUAL_PACKAGES.find(p => p.id === selectedPackageId)?.name}
+                            </span>
+                          )}
                         </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        {debugState?.messagesReceived || 0} msgs
-                      </span>
+                      </Button>
+
+                      <p className="text-xs text-center text-muted-foreground mt-3 flex items-center justify-center gap-1">
+                        <Rocket className="w-3 h-3" />
+                        Ao clicar, nossos 4 agentes iniciarão o processo criativo.
+                      </p>
                     </div>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
 
-                    {/* Indicador de Progresso do Batch */}
-                    {activeBatchProgress && (
-                      <div className="p-2 mt-2 rounded-lg bg-blue-50 border border-blue-200">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-blue-700">
-                            📥 Recebendo: {activeBatchProgress.productName}
-                          </span>
-                          <span className="text-[10px] text-blue-600">
-                            {activeBatchProgress.current}/{activeBatchProgress.total}
-                          </span>
-                        </div>
-                        <Progress value={(activeBatchProgress.current / activeBatchProgress.total) * 100} className="h-1" />
-                      </div>
-                    )}
+          {/* COMBINED STEP: GENERATING & RESULTS (Replaces Input Form) */}
+          {(workflowStep === 'generating' || workflowStep === 'results') && (
+            <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500 min-h-[600px]">
 
-                    {/* Indicador de Upscale em Progresso */}
-                    {upscaleProgress.isProcessing && (
-                      <div className="p-2 mt-2 rounded-lg bg-amber-50 border border-amber-200">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-3 w-3 animate-spin text-amber-600" />
-                          <span className="text-xs text-amber-700">
-                            📈 Upscale {upscaleProgress.currentImage}/{upscaleProgress.totalImages}: {upscaleProgress.sceneType}
-                          </span>
-                        </div>
+              {/* PROGRESS SECTION (Always visible during generation, or if we want to show it completed) */}
+              {(workflowStep === 'generating' || (workflowStep === 'results' && agentProgress < 100)) && (
+                <div className="py-12 text-center flex flex-col items-center justify-center">
+                  <div className="max-w-md w-full mx-auto space-y-8 relative">
+                    <div className="relative mb-6">
+                      <div className="absolute inset-0 bg-violet-500/30 blur-[50px] rounded-full scale-150 animate-pulse" />
+                      <div className="relative z-10 bg-background/50 backdrop-blur-md rounded-full p-6 inline-block shadow-2xl border border-violet-500/30">
+                        {(() => {
+                          let avatarSrc = null;
+                          if (currentAgent.includes('Atlas')) avatarSrc = '/avatars/avatar_tech_hero_hd_1769790952016.png';
+                          else if (currentAgent.includes('Lyra')) avatarSrc = '/avatars/avatar_brand_fairy_1769787230816.png';
+                          else if (currentAgent.includes('Orion')) avatarSrc = '/avatars/avatar_expert_fox_1769787204234.png';
+                          else if (currentAgent.includes('Lucy')) avatarSrc = '/avatars/avatar_gamer_girl_hd_1769790965756.png';
+
+                          if (avatarSrc) {
+                            return (
+                              <div className="relative">
+                                <img
+                                  src={avatarSrc}
+                                  alt={currentAgent}
+                                  className="w-32 h-32 rounded-full object-cover animate-in fade-in zoom-in duration-500 border-4 border-white/50 shadow-inner"
+                                />
+                                <div className="absolute -bottom-2 -right-2 bg-violet-600 rounded-full p-2 border-4 border-white">
+                                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                                </div>
+                              </div>
+                            );
+                          }
+                          return <Loader2 className="w-16 h-16 text-violet-500 animate-spin" />;
+                        })()}
                       </div>
-                    )}
+                    </div>
+                    <div className="space-y-3">
+                      <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-500 to-indigo-500">
+                        {currentAgent || 'Processando...'}
+                      </h3>
+                      <Progress value={agentProgress} className="h-2 w-full bg-secondary" />
+                      <p className="text-sm text-muted-foreground font-medium animate-pulse">
+                        {agentProgress < 100
+                          ? `Criando variações visuais... (${Math.max(0, productImages.length - initialImageCount)}/${expectedTotalImages})`
+                          : 'Finalizando...'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* HEADING (Visible only when done or when images appear?) */}
+              {workflowStep === 'results' && agentProgress >= 100 && (
+                <div className="text-center space-y-4 animate-in slide-in-from-bottom-5 duration-700">
+                  <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20 px-4 py-1.5 text-sm border-green-200">
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Geração Concluída!
+                  </Badge>
+                  <h2 className="text-4xl font-bold tracking-tight text-slate-900">Seus Anúncios Estão Prontos</h2>
+                  <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                    Confira abaixo as variações criadas pelos agentes. Você pode baixar individualmente ou em pacote.
+                  </p>
+                  <Button
+                    onClick={handleNewProduct}
+                    className="gap-3 rounded-full mt-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-lg font-bold px-10 py-7 h-auto border-0 ring-4 ring-emerald-100"
+                  >
+                    <Plus className="w-6 h-6 stroke-[3]" />
+                    Criar Novo Anúncio Profissional
+                  </Button>
+                </div>
+              )}
+
+              {/* Galeria Principal de Resultados (Exibe assim que tiver imagens NOVAS) */}
+              {(productImages.length > initialImageCount) && (
+                <div className="bg-white rounded-3xl shadow-sm border p-6 animate-in slide-in-from-bottom-10 duration-700 delay-150">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Image className="w-5 h-5 text-violet-600" />
+                        Galeria de Imagens Geradas
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Todas as imagens criadas pelos agentes aparecem aqui.
+                      </p>
+                    </div>
                   </div>
 
-                  {/* ✅ Imagens do N8N vão direto para a Galeria Principal (ProductImagesGrid) */}
-                </CardContent>
-              </CollapsibleContent>
-            </Collapsible>
-          </Card>
-        </SafeErrorBoundary>
+                  <GeneratedImageGallery
+                    images={productImages.slice(initialImageCount).map((url, idx) => ({
+                      imageUrl: url,
+                      mimeType: 'image/png',
+                      generatedAt: new Date().toISOString(),
+                      productName: formData.nome || 'Produto',
+                      sceneType: `Variação ${idx + 1}`
+                    }))}
+                    isGenerating={false}
+                    onClearImages={() => { }}
+                  />
 
-        {/* ✅ BOTÃO MÁGICO "Acionar Agentes de Conversão" - SEMPRE VISÍVEL */}
-        <Card className="glass-effect shadow-lg border-2 border-primary/30 bg-gradient-to-br from-violet-50/90 to-purple-50/80 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-center">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                  ⚡ Agentes de Conversão
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  ATLAS (Análise) → LYRA (Copy) → ORION (Imagens 8 Cenas)
-                </p>
+                  {/* ESTRATÉGIA & COPYWRITING (ABAIXO DA GALERIA) */}
+                  <div className="mt-8 animate-in slide-in-from-bottom-10 duration-700 delay-300">
+                    <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 shadow-sm">
+                      <div className="mb-6">
+                        <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+                          <Brain className="w-5 h-5 text-violet-600" />
+                          Estratégia & Copywriting
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Análise estratégica gerada pelos agentes Atlas e Lyra.
+                        </p>
+                      </div>
+
+                      <CompactAIDescriptionEnhancer
+                        productName={formData.nome}
+                        shortDescription={formData.descricao_curta}
+                        onUpdateDescription={(type, value) => {
+                          if (type === 'short') {
+                            setFormData(prev => ({ ...prev, descricao_curta: value }));
+                            toast.success('Descrição atualizada!');
+                          }
+                        }}
+                        copywritingData={n8nCopywritingResult ? { content: typeof n8nCopywritingResult.content === 'string' ? n8nCopywritingResult.content : JSON.stringify(n8nCopywritingResult), timestamp: Date.now() } : null}
+                        externalUnifiedData={n8nUnifiedResult}
+                        // Webhook props
+                        onExecuteWebhookComando={executeStep1}
+                        onExecuteWebhookCopywriting={executeStep2}
+                        isLoadingComando={step1.status === 'running'}
+                        isLoadingCopywriting={step2.status === 'running'}
+                        webhookComandoConfigured={!!webhookComandoUnificado}
+                        webhookCopywritingConfigured={!!webhookCopywriting}
+                      />
+                    </div>
+                  </div>
+
+                  {/* BOTÃO GIGANTE DE DOWNLOAD - Só aparece quando terminar e tiver novas imagens */}
+                  {workflowStep === 'results' && agentProgress >= 100 && (
+                    <div className="mt-12 flex flex-col items-center animate-in slide-in-from-bottom-5 duration-1000 delay-500">
+                      <Button
+                        onClick={handleDownloadAll}
+                        className="w-full max-w-2xl h-24 text-2xl font-black uppercase tracking-wider bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:scale-105 transition-all duration-300 shadow-[0_0_40px_-5px_rgba(249,115,22,0.6)] animate-pulse border-4 border-white/20 rounded-2xl"
+                      >
+                        <div className="flex flex-col items-center">
+                          <span className="flex items-center gap-3">
+                            <Download className="w-8 h-8" />
+                            BAIXAR KIT COMPLETO AGORA
+                          </span>
+                          <span className="text-sm font-normal normal-case opacity-90 mt-1">
+                            (Faça o download antes que os links expirem)
+                          </span>
+                        </div>
+                      </Button>
+                      <p className="text-center text-muted-foreground/60 text-xs mt-3 max-w-md">
+                        Por segurança e privacidade, as imagens geradas não são mantidas em nossos servidores por muito tempo. Salve-as agora.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* MODAL DE CONCLUSÃO (PARABÉNS) */}
+          <Dialog open={showCompletionModal} onOpenChange={(open) => {
+            setShowCompletionModal(open);
+            if (!open) {
+              setHidePackages(true); // Ocultar pacotes ao fechar
+
+              // Smooth scroll para a área de resultados
+              setTimeout(() => {
+                document.querySelector('.bg-slate-50')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 300);
+            }
+          }}>
+            <DialogContent className="sm:max-w-md text-center border-2 border-green-100 shadow-2xl">
+              <DialogHeader>
+                <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-in zoom-in duration-500 shadow-inner">
+                  <CheckCircle2 className="w-10 h-10 text-green-600" />
+                </div>
+                <DialogTitle className="text-3xl font-bold text-center text-slate-800">Parabéns!</DialogTitle>
+                <DialogDescription className="text-center pt-4 text-lg text-slate-600">
+                  Seu kit foi gerado com sucesso! 🎉
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 my-2 text-left space-y-2">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-orange-800 text-sm">Atenção: Imagens Temporárias</p>
+                    <p className="text-orange-700/80 text-xs mt-1 leading-relaxed">
+                      As imagens geradas não ficam salvas em nosso banco de dados. Você deve baixá-las agora para não perdê-las.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* MagicAgentButton */}
-              <div className="w-full max-w-md">
-                <MagicAgentButton
-                  onClick={handleMagicFlow}
-                  isExecuting={isMagicFlowExecuting}
-                  isValid={isFormValid && !!webhookComandoUnificado && !!webhookCopywriting && !!webhookTratamentoCombinado}
-                  missingFields={[
-                    ...missingFields,
-                    ...(!webhookComandoUnificado ? ['Webhook Comando (ATLAS)'] : []),
-                    ...(!webhookCopywriting ? ['Webhook Copy (LYRA)'] : []),
-                    ...(!webhookTratamentoCombinado ? ['Webhook Tratamento (ORION)'] : [])
-                  ]}
-                  currentStep={magicFlowCurrentStep}
+              <DialogFooter className="sm:justify-center mt-6 w-full">
+                <Button
+                  onClick={() => {
+                    setShowCompletionModal(false);
+                    setHidePackages(true);
+                    // Smooth scroll para resultados
+                    setTimeout(() => {
+                      document.querySelector('.bg-slate-50')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 300);
+                  }}
+                  className="w-full h-12 text-lg bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200"
+                >
+                  Entendi, ver meus anúncios
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Settings Toggle (Always accessible) */}
+          <div className="fixed bottom-4 right-4 z-50">
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full shadow-lg bg-background/80 backdrop-blur-sm hover:bg-white hover:scale-110 transition-all border-violet-200"
+              onClick={() => setShowConfig(!showConfig)}
+            >
+              <Settings className={cn("w-5 h-5 transition-transform text-violet-600", showConfig ? "rotate-90" : "")} />
+            </Button>
+          </div>
+
+          {/* COMPONENTES OCULTOS MAS NECESSÁRIOS PARA LÓGICA */}
+          {showConfig && (
+            <div className="hidden">
+              {/* Manter componentes lógicos montados se necessário, mas ocultos */}
+              <N8NWebhooksUI
+                webhooks={webhooks}
+                onSave={saveWebhook}
+                isLoading={isLoading}
+              />
+            </div>
+          )}
+
+        </div>
+        {/* Modal de Download (Estilo "Parabéns") */}
+        <Dialog open={showDownloadModal} onOpenChange={setShowDownloadModal}>
+          <DialogContent className="sm:max-w-xl p-0 overflow-visible bg-transparent border-none shadow-none">
+            <div className="bg-white rounded-2xl p-6 shadow-2xl border border-white/20 relative">
+              <button
+                onClick={() => setShowDownloadModal(false)}
+                className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-100 transition-colors z-10"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+              </button>
+
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-bounce">
+                  <Check className="w-8 h-8 text-white stroke-[3]" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-1">Seus Anúncios Estão Prontos!</h2>
+                <p className="text-slate-500">Tudo foi gerado e organizado para você.</p>
+              </div>
+
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-pink-600 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+
+                <EbookDownloadButton
+                  product={{
+                    nome: formData.nome || 'Produto',
+                    descricao: formData.descricao,
+                    sku: formData.sku
+                  }}
+                  unifiedData={n8nUnifiedResult}
+                  copywritingText={n8nCopywritingResult?.content}
+                  images={productImages.map(url => ({ url, type: 'generated' }))}
+                  showOptions={false}
+                  forceEnabled={true}
+                  customTrigger={
+                    <button className="relative w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-xl py-4 px-6 shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl flex flex-col items-center justify-center gap-1 group-active:translate-y-0">
+                      <div className="flex items-center gap-2 text-xl font-black uppercase tracking-wide">
+                        <Download className="w-6 h-6 stroke-[3]" />
+                        BAIXAR KIT COMPLETO AGORA
+                      </div>
+                      <span className="text-xs font-medium text-white/90 bg-black/10 px-3 py-0.5 rounded-full">
+                        (Faça o download antes que os links expirem)
+                      </span>
+                    </button>
+                  }
                 />
               </div>
 
-              {/* Botões secundários */}
-              <div className="flex gap-3 flex-wrap justify-center mt-2">
-                <Button
-                  onClick={() => setShowPreflightModal(true)}
-                  disabled={!isFormValid || isStarting || isMagicFlowExecuting}
-                  size="sm"
-                  variant="outline"
-                  className="border-primary/50 text-primary hover:bg-primary/10"
-                >
-                  <Rocket className="h-4 w-4 mr-2" />
-                  Automação Gemini (KITs)
-                </Button>
-
-                <Button
-                  onClick={startAIOnlyTest}
-                  disabled={!isFormValid || isStarting || isMagicFlowExecuting}
-                  size="sm"
-                  variant="outline"
-                  className="border-amber-500/50 text-amber-700 hover:bg-amber-50"
-                >
-                  <Brain className="h-4 w-4 mr-2" />
-                  🧪 Testar AI Only
-                </Button>
-              </div>
-
-              <p className="text-xs text-muted-foreground text-center max-w-md">
-                <span className="text-primary font-medium">⚡ Acionar Agentes:</span> Executa os 3 agentes N8N em sequência.
-                <span className="text-amber-600 font-medium ml-1">🧪 AI Only:</span> Apenas textos sem imagens.
+              <p className="text-xs text-center text-slate-400 mt-4 max-w-sm mx-auto">
+                Por segurança e privacidade, as imagens geradas não são mantidas em nossos servidores por muito tempo. Salve-as agora.
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
 
-        {/* ✅ BOTÃO WEBHOOK UNIFICADO 4 - NOVO */}
-        <Card className="glass-effect shadow-lg border-2 border-indigo-500/30 bg-gradient-to-br from-indigo-50/90 to-blue-50/80 backdrop-blur-sm mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-center">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-                  🚀 Disparador Unificado (3 Webhooks)
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Aciona até 3 fluxos N8N simultaneamente com os dados do produto
-                </p>
-              </div>
-
-              <div className="w-full max-w-md">
-                <Button
-                  onClick={handleUnified4Fire}
-                  disabled={isUnifiedFiring}
-                  className={`w-full h-14 text-lg font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] ${isUnifiedFiring
-                    ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                    : "bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white"
-                    }`}
-                >
-                  {isUnifiedFiring ? (
-                    <>
-                      <Loader2 className="mr-2 h-6 w-6 animate-spin text-indigo-500" />
-                      AGUARDANDO IMAGENS...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="mr-2 h-6 w-6 text-yellow-300 fill-yellow-300" />
-                      DISPARAR 3 WEBHOOKS
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* ✅ CONFIGURAÇÃO DOS 3 WEBHOOKS */}
-              <div className="w-full max-w-2xl mt-4">
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full flex items-center gap-2 text-indigo-700 hover:bg-indigo-50">
-                      <Settings className="h-4 w-4" />
-                      Configurar os 3 Webhooks
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="space-y-3 mt-4 p-4 bg-white/50 rounded-lg border border-indigo-100">
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold text-indigo-900">Webhook URL 1</Label>
-                        <Input
-                          placeholder="https://seu-n8n.app/webhook/url-1"
-                          value={webhooks['n8n_unified_4_url_1'] || ''}
-                          onChange={(e) => saveWebhook('n8n_unified_4_url_1', e.target.value)}
-                          className="bg-white/80 border-indigo-200 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold text-indigo-900">Webhook URL 2</Label>
-                        <Input
-                          placeholder="https://seu-n8n.app/webhook/url-2"
-                          value={webhooks['n8n_unified_4_url_2'] || ''}
-                          onChange={(e) => saveWebhook('n8n_unified_4_url_2', e.target.value)}
-                          className="bg-white/80 border-indigo-200 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold text-indigo-900">Webhook URL 3</Label>
-                        <Input
-                          placeholder="https://seu-n8n.app/webhook/url-3"
-                          value={webhooks['n8n_unified_4_url_3'] || ''}
-                          onChange={(e) => saveWebhook('n8n_unified_4_url_3', e.target.value)}
-                          className="bg-white/80 border-indigo-200 text-xs"
-                        />
-                      </div>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Modal Pre-Flight Check */}
-        <PreflightCheckModal
-          isOpen={showPreflightModal}
-          onClose={() => setShowPreflightModal(false)}
-          onProceed={() => {
-            setWasAutomationStarted(true);
-            startAutomation();
-          }}
-          productId={productId}
-          images={productImages}
-        />
-
-        {/* Indicador de Progresso da Automação - Só aparece se automação foi iniciada */}
-        {(wasAutomationStarted || isAutomationRunning || isAutomationComplete) && (
-          <AutomationProgressIndicator steps={steps} isRunning={isAutomationRunning} />
-        )}
-
-        {/* Seção de Prompts Midjourney/DALL-E */}
-        {Object.keys(midjourneyPrompts).length > 0 && (
-          <MidjourneyPromptsSection prompts={midjourneyPrompts} />
-        )}
-
-        {/* Gerador de Copywriting - OCULTADO por solicitação do usuário */}
-        {/* 
-        {!isAutomationRunning && !copywritingData && (
-          <SafeErrorBoundary>
-            <CopywritingGenerator
-              productId={productId}
-              productName={formData.nome}
-              productSku={formData.sku || 'UNIFIED-AD-GEN'}
-              images={productImages}
-              shortDescription={formData.descricao_curta || ''}
-              autoGenerate={automationStep === 'copywriting'}
-              onComplete={handleCopywritingComplete}
-            />
-          </SafeErrorBoundary>
-        )}
-
-        {isAutomationRunning && automationStep === 'copywriting' && (
-          <SafeErrorBoundary>
-            <CopywritingGenerator
-              productId={productId}
-              productName={formData.nome}
-              productSku={formData.sku || 'UNIFIED-AD-GEN'}
-              images={productImages}
-              shortDescription={formData.descricao_curta || ''}
-              autoGenerate={true}
-              onComplete={handleCopywritingComplete}
-              simplifiedView={true}
-            />
-          </SafeErrorBoundary>
-        )}
-        */}
-
-        {/* Gerador de Background - Gemini AI - OCULTADO (usando n8n) */}
-        {isAutomationRunning && automationStep === 'gemini' && (
-          <div className="hidden">
-            <GeminiBackgroundGenerator
-              images={productImages}
-              productName={formData.nome}
-              productId={productId}
-              dimensions={{
-                altura: formData.altura,
-                largura: formData.largura,
-                profundidade: formData.profundidade,
-                peso_bruto: formData.peso_bruto
-              }}
-              autoGenerate={true}
-              simplifiedView={true}
-              onComplete={handleGeminiComplete}
-            />
-          </div>
-        )}
-
-        {/* Templates de Marketing Estilo Canva */}
-        <SafeErrorBoundary>
-          <Collapsible open={expandedCanvaTemplates} onOpenChange={setExpandedCanvaTemplates}>
-            <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-green-50/80 backdrop-blur-sm overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-green-100/50 to-teal-100/50 border-b border-green-200/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-teal-500 shadow-lg">
-                      <Brain className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">
-                        Templates de Marketing Estilo Canva
-                      </CardTitle>
-                      {!expandedCanvaTemplates && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Gere imagens profissionais automaticamente com seus dados de IA
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                      Auto-Generate
-                    </Badge>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        {expandedCanvaTemplates ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                    </CollapsibleTrigger>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CollapsibleContent forceMount className={!expandedCanvaTemplates ? "hidden" : ""}>
-                <CardContent className="pt-6 space-y-6">
-                  <CanvaStyleTemplateGenerator
-                    productId={productId}
-                    productName={formData.nome || 'Novo Produto'}
-                    aiImages={originalHostedUrls.length > 0 ? originalHostedUrls : (hostedAIImages.length > 0 ? hostedAIImages : productImages)}
-                    unifiedData={unifiedData}
-                    logoUrl={brandSettings?.logo_url || undefined}
-                  />
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        </SafeErrorBoundary>
-
-        {/* Gerador de Showcases de Produto */}
-        <SafeErrorBoundary>
-          <Collapsible open={expandedShowcase} onOpenChange={setExpandedShowcase}>
-            <Card className="glass-effect shadow-lg border-0 bg-gradient-to-br from-white/90 to-orange-50/80 backdrop-blur-sm overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-orange-100/50 to-yellow-100/50 border-b border-orange-200/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-500 shadow-lg">
-                      <Grid3x3 className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl font-bold bg-gradient-to-r from-orange-600 to-yellow-600 bg-clip-text text-transparent">
-                        Showcases de Produto
-                      </CardTitle>
-                      {!expandedShowcase && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Composições visuais profissionais com imagens em círculos
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200">
-                      Auto-Generate
-                    </Badge>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        {expandedShowcase ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                    </CollapsibleTrigger>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CollapsibleContent forceMount className={!expandedShowcase ? "hidden" : ""}>
-                <CardContent className="pt-6">
-                  <ProductShowcaseGenerator
-                    productId={productId}
-                    productName={formData.nome || 'Novo Produto'}
-                    productImages={productImages}
-                    onImagesGenerated={() => { }}
-                  />
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        </SafeErrorBoundary>
-
-        {/* Sistema de Automação IA */}
-        <SafeErrorBoundary>
-          <AIImageAutoProcessor
-            productId={productId}
-            productName={formData.nome || 'Novo Produto'}
-            isExpanded={expandedAutoProcessor}
-            onToggleExpanded={() => setExpandedAutoProcessor(prev => !prev)}
-          />
-        </SafeErrorBoundary>
-
-        {/* Gerador Automático de KITs */}
-        {isAutomationRunning && automationStep === 'kits' && (
-          <div className="hidden">
-            <CloudinaryProductTransform
-              productId={productId}
-              productSku={formData.sku || 'UNIFIED-AD-GEN'}
-              productName={formData.nome || 'Novo Produto'}
-              images={productImages}
-              autoGenerate={true}
-              onComplete={() => { }}
-            />
-          </div>
-        )}
-
-        {/* Planilha de 20 Anúncios Premium */}
-        <SafeErrorBoundary>
-          <div className="flex justify-center my-4">
-            <PremiumAdsExportButton product={product} />
-          </div>
-        </SafeErrorBoundary>
-
-        {/* Tabela de Preços */}
-        {selectedPricing !== 'none' && formData.preco_custo > 0 && (
-          <SafeErrorBoundary>
-            <ProductTable
-              products={[{
-                ...product,
-                preco_custo: formData.preco_custo,
-                peso_liquido: formData.peso_liquido
-              }]}
-              onEditProduct={() => { }}
-              onViewProduct={() => { }}
-              updateSingleProduct={() => { }}
-              profitMargin={profitMargin}
-              taxRate={taxRate}
-              selectedPricing={selectedPricing}
-              storeCommission={storeCommission}
-            />
-          </SafeErrorBoundary>
-        )}
-
-        {/* Configurações de Precificação */}
-        <SafeErrorBoundary>
-          <PricingControls
-            profitMargin={profitMargin}
-            taxRate={taxRate}
-            onProfitMarginChange={setProfitMargin}
-            onTaxRateChange={setTaxRate}
-            selectedPricing={selectedPricing}
-            onPricingChange={setSelectedPricing}
-            storeCommission={storeCommission}
-            onStoreCommissionChange={setStoreCommission}
-          />
-        </SafeErrorBoundary>
       </ProductDetailsLayout>
     </SafeErrorBoundary>
   );

@@ -1,7 +1,7 @@
 import { Zap, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AICostsBadge } from "./AICostsBadge";
+
 
 interface CreditsCompactBadgeProps {
   creditsAvailable: number;
@@ -10,9 +10,9 @@ interface CreditsCompactBadgeProps {
   showAICosts?: boolean;
 }
 
-export const CreditsCompactBadge = ({ 
-  creditsAvailable, 
-  creditsUsed, 
+export const CreditsCompactBadge = ({
+  creditsAvailable,
+  creditsUsed,
   isLoading = false,
   showAICosts = true
 }: CreditsCompactBadgeProps) => {
@@ -73,9 +73,7 @@ export const CreditsCompactBadge = ({
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      
-      {/* Badge de Custos de IA */}
-      {showAICosts && <AICostsBadge />}
+
     </div>
   );
 };
