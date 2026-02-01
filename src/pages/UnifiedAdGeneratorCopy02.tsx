@@ -51,6 +51,8 @@ import { useMarketingTemplates } from "@/hooks/useMarketingTemplates";
 import { templateImageCache } from "@/utils/TemplateImageCache";
 import { TemplateConfig } from "@/types/marketing-templates";
 import { CompactAIDescriptionEnhancer } from "@/components/product/ai-enhancer/CompactAIDescriptionEnhancer";
+import { WorkflowProgressTracker } from "@/components/workflow/WorkflowProgressTracker";
+import { useWorkflowTracking } from "@/hooks/useWorkflowTracking";
 
 
 // Constante para referência (mesma da edge function)
@@ -332,6 +334,17 @@ export default function UnifiedAdGeneratorCopy02() {
     console.log('✨ [UNIFIED-AD-GENERATOR] Novo productId criado:', newId);
     return newId;
   });
+
+  // Hook para tracking do workflow via Supabase Realtime
+  const {
+    steps: workflowSteps,
+    currentStep: currentWorkflowStep,
+    overallProgress: workflowProgress,
+    isConnected: isWorkflowConnected,
+    hasError: workflowHasError,
+    isComplete: workflowIsComplete,
+    clearSession: clearWorkflowSession
+  } = useWorkflowTracking({ sessionId: productId, enabled: true });
 
   // Dados do formulário (vazios inicialmente)
   const [formData, setFormData] = useState({
@@ -2798,6 +2811,19 @@ export default function UnifiedAdGeneratorCopy02() {
                           : 'Finalizando...'}
                       </p>
                     </div>
+
+                    {/* Tracking em tempo real do n8n via Supabase */}
+                    {workflowSteps.length > 0 && (
+                      <div className="mt-6 w-full">
+                        <WorkflowProgressTracker
+                          sessionId={productId}
+                          title="Status do Workflow n8n"
+                          showHeader={true}
+                          compact={false}
+                          className="bg-white/80 backdrop-blur-sm shadow-lg"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
