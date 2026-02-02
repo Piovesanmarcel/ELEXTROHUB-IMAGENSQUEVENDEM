@@ -23,6 +23,7 @@ import { PremiumAdsExportButton } from "@/components/product/PremiumAdsExportBut
 import { ProductDetailsLayout } from "@/components/product/ProductDetailsLayout";
 import { CanvaStyleTemplateGenerator } from "@/components/product/CanvaStyleTemplateGenerator";
 import { SafeErrorBoundary } from "@/components/SafeErrorBoundary";
+import { CompactAIDescriptionEnhancer } from "@/components/product/ai-enhancer/CompactAIDescriptionEnhancer";
 import PricingControls from "@/components/pricing/PricingControls";
 import { ProductTable } from "@/components/ProductTable";
 import { useProductsPricing } from "@/hooks/products/useProductsPricing";
@@ -684,9 +685,47 @@ export default function UnifiedAdGeneratorTest() {
     window.addEventListener('imageGenerated', handleImageGenerated as EventListener);
     window.addEventListener('hostedImageSaved', handleHostedImageSaved as EventListener);
 
+    // ✅ NOVO: Realtime Subscription para Resultados do Comando Unificado (Atlas)
+    console.log('📡 [UNIFIED-AD-GENERATOR] Iniciando subscription Realtime para resultados Atlas:', productId);
+    const channel = supabase
+      .channel(`unified_results_${productId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ai_unified_results',
+          filter: `product_id=eq.${productId}`
+        },
+        (payload) => {
+          console.log('✨ [REALTIME] Mudança detectada em ai_unified_results:', {
+            event: payload.eventType,
+            new: payload.new,
+            old: payload.old
+          });
+
+          if (payload.new && (payload.new as any).results) {
+            const results = (payload.new as any).results;
+            const resProductId = (payload.new as any).product_id;
+
+            console.log('✅ [REALTIME] Dados válidos recebidos:', {
+              productId: resProductId,
+              resultsKeys: Object.keys(results)
+            });
+
+            setN8nUnifiedResult(results);
+            toast.success("Atlas: Dados de conversão recebidos via callback!");
+          } else {
+            console.warn('⚠️ [REALTIME] Mudança detectada mas sem dados de resultados ou payload.new vazio');
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       window.removeEventListener('imageGenerated', handleImageGenerated as EventListener);
       window.removeEventListener('hostedImageSaved', handleHostedImageSaved as EventListener);
+      supabase.removeChannel(channel);
     };
   }, [productId]);
 
@@ -1126,6 +1165,8 @@ export default function UnifiedAdGeneratorTest() {
       request_id: `parallel_test_${Date.now()}`,
       job_id: jobId, // CRÍTICO: enviar jobId para o n8n (snake_case para compatibilidade)
       jobId: jobId,  // CRÍTICO: também camelCase para garantir
+      product_id: productId, // ✅ NOVO: Identificador do produto
+      productId: productId,  // ✅ NOVO: CamelCase para compatibilidade
       product_name: formData.nome,
       productName: formData.nome,
       user_id: effectiveUserId, // Usar effectiveUserId (confiável)
@@ -1255,6 +1296,8 @@ export default function UnifiedAdGeneratorTest() {
 
     try {
       const payload = {
+        product_id: productId, // ✅ NOVO
+        productId: productId,  // ✅ NOVO
         product_name: formData.nome,
         short_description: formData.descricao_curta || formData.nome,
         long_description: formData.descricao || formData.descricao_curta || formData.nome,
@@ -1361,6 +1404,8 @@ export default function UnifiedAdGeneratorTest() {
 
     try {
       const payload = {
+        product_id: productId, // ✅ NOVO
+        productId: productId,  // ✅ NOVO
         product_name: formData.nome,
         short_description: formData.descricao_curta || formData.nome,
         long_description: formData.descricao || formData.descricao_curta || formData.nome,
@@ -1724,6 +1769,31 @@ export default function UnifiedAdGeneratorTest() {
               webhookComandoConfigured={!!webhookComandoUnificado}
               webhookCopywritingConfigured={!!webhookCopywriting}
             />
+            <div className="mt-8 pt-6 border-t-2 border-dashed border-purple-100">
+              <div className="mb-4">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-purple-600" />
+                  3. IA & Conversão
+                </h3>
+                <p className="text-xs text-muted-foreground">Resultados do Atlas e Lyra aparecerão abaixo.</p>
+              </div>
+
+              <CompactAIDescriptionEnhancer
+                productId={productId} // Usando o productId da sessão
+                productSku={formData.sku}
+                productName={formData.nome}
+                shortDescription={formData.descricao_curta}
+                onUpdateDescription={handleUpdateDescription}
+                isAutomationRunning={isAutomationRunning}
+                automationStep={automationStep}
+                copywritingData={n8nCopywritingResult}
+                externalUnifiedData={n8nUnifiedResult}
+                onExecuteWebhookComando={executeStep1}
+                onExecuteWebhookCopywriting={executeStep2}
+                webhookComandoConfigured={!!webhookComandoUnificado}
+                webhookCopywritingConfigured={!!webhookCopywriting}
+              />
+            </div>
           </Card>
         </SafeErrorBoundary>
 
@@ -1875,9 +1945,9 @@ export default function UnifiedAdGeneratorTest() {
                           agent="orion"
                           status={
                             (isTestingParallel ? "running" :
-                            parallelTestProgress.completed === 8 ? "success" :
-                            parallelTestProgress.failed > 0 ? "error" :
-                            "idle") as AgentStatus
+                              parallelTestProgress.completed === 8 ? "success" :
+                                parallelTestProgress.failed > 0 ? "error" :
+                                  "idle") as AgentStatus
                           }
                           size="sm"
                           showName={true}
@@ -1890,10 +1960,10 @@ export default function UnifiedAdGeneratorTest() {
                             isTestingParallel
                               ? `${parallelTestProgress.completed + parallelTestProgress.failed}/${parallelTestProgress.total} imagens`
                               : parallelTestProgress.completed === 8
-                              ? `${parallelTestProgress.completed} imagens prontas!`
-                              : parallelTestProgress.completed > 0
-                              ? `✓ ${parallelTestProgress.completed} | ✗ ${parallelTestProgress.failed}`
-                              : undefined
+                                ? `${parallelTestProgress.completed} imagens prontas!`
+                                : parallelTestProgress.completed > 0
+                                  ? `✓ ${parallelTestProgress.completed} | ✗ ${parallelTestProgress.failed}`
+                                  : undefined
                           }
                         />
                         <Button

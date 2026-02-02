@@ -64,6 +64,7 @@ const AutoTemplateMapper = lazy(() => import("./pages/AutoTemplateMapperPage"));
 const QueueMonitor = lazy(() => import("./pages/QueueMonitor"));
 const MarketingGallery = lazy(() => import("./pages/MarketingGallery"));
 const AdsConfigurator = lazy(() => import("./pages/AdsConfigurator"));
+const KitImageGenerator = lazy(() => import("./pages/KitImageGenerator"));
 
 const AdGeneratorN8N = lazy(() => import("./pages/AdGeneratorN8N"));
 const ComandoUnificadoN8N = lazy(() => import("./pages/ComandoUnificadoN8N"));
@@ -74,10 +75,11 @@ const CanvaTemplateN8N = lazy(() => import("./pages/CanvaTemplateN8NPage"));
 const UnifiedAdGeneratorCopy = lazy(() => import("./pages/UnifiedAdGeneratorCopy"));
 const UnifiedAdGeneratorCopy02 = lazy(() => import("./pages/UnifiedAdGeneratorCopy02"));
 const UnifiedAdGeneratorTest = lazy(() => import("./pages/UnifiedAdGeneratorTest"));
+const AtlasTrackingTest = lazy(() => import("./pages/AtlasTrackingTest"));
 const SaaSLandingPage = lazy(() => import("./pages/SaaSLandingPage"));
 
 
-const AICosts = lazy(() => import("./pages/AICosts"));
+const AICosts = lazy(() => import("./pages/AICostsDashboard"));
 const AdminCompras = lazy(() => import("./pages/admin/AdminCompras"));
 const AdminMetrics = lazy(() => import("./pages/AdminMetrics"));
 const QueueTestPage = lazy(() => import("./pages/admin/QueueTestPage"));
@@ -170,6 +172,7 @@ function App() {
                         <Route path="monitoramento-fila" element={<QueueMonitor />} />
                         <Route path="galeria-marketing" element={<MarketingGallery />} />
                         <Route path="ads-configurator" element={<AdsConfigurator />} />
+                        <Route path="kit-generator" element={<KitImageGenerator />} />
 
                         <Route path="gerador-anuncios-n8n" element={<AdGeneratorN8N />} />
                         <Route path="comando-unificado-n8n" element={<ComandoUnificadoN8N />} />
@@ -180,6 +183,7 @@ function App() {
                         <Route path="gerador-unificado-copy" element={<UnifiedAdGeneratorCopy02 />} />
                         <Route path="gerador-unificado-copy02" element={<UnifiedAdGeneratorCopy02 />} />
                         <Route path="gerador-unificado-test" element={<UnifiedAdGeneratorTest />} />
+                        <Route path="atlas-tracking-test" element={<AtlasTrackingTest />} />
                         <Route path="saas-landing" element={<SaaSLandingPage />} />
                         <Route path="gerador-teste-02" element={<UnifiedAdGeneratorTest02 />} />
 

@@ -328,7 +328,7 @@ serve(async (req) => {
 
     // Validar entrada conforme ação
     const isImageGeneration = action === 'generate_background';
-    const isPromptGeneration = !action || action === 'generate_prompt';
+    const isPromptGeneration = !action || action === 'generate_prompt' || action === 'suggest_kit_description';
 
     // SEMPRE exigir imageData e prompt, pois agora o prompt generation também analisa a imagem
     if (!imageData || !prompt) {
@@ -1107,6 +1107,10 @@ STRICTLY FORBIDDEN: text, letters, words, watermarks, logos that weren't in orig
       if (isCopywritingProfessional) {
         // Para copywriting profissional - usar o prompt completo e direto
         geminiPrompt = specificPrompt;
+      } else if (action === 'suggest_kit_description') {
+        // Para sugestões de kit - usar o prompt direto sem prefixos de ambiente
+        geminiPrompt = prompt;
+        console.log(`✨ [${requestId}] Usando prompt direto para sugestao de kit`);
       } else {
         // Para prompts de ambiente - usar prompt simplificado com instruções de escala
         if (detectedAmbient === 'ambient_3') {

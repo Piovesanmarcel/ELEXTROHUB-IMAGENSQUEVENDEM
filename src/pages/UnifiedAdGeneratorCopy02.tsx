@@ -297,6 +297,7 @@ export default function UnifiedAdGeneratorCopy02() {
   const handleBackToSelection = () => {
     setWorkflowStep('selection');
     setSelectedPackageId(null);
+    setCurrentJobId(null); // Limpar jobId de tracking
   };
 
   // ⚠️ Aviso ao sair da página se houver imagens não baixadas
@@ -335,7 +336,10 @@ export default function UnifiedAdGeneratorCopy02() {
     return newId;
   });
 
-  // Hook para tracking do workflow via Supabase Realtime
+  // Estado para armazenar o jobId atual (para tracking)
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+
+  // Hook para tracking do workflow via Supabase Realtime (usa jobId, não productId)
   const {
     steps: workflowSteps,
     currentStep: currentWorkflowStep,
@@ -344,7 +348,7 @@ export default function UnifiedAdGeneratorCopy02() {
     hasError: workflowHasError,
     isComplete: workflowIsComplete,
     clearSession: clearWorkflowSession
-  } = useWorkflowTracking({ sessionId: productId, enabled: true });
+  } = useWorkflowTracking({ sessionId: currentJobId || '', enabled: !!currentJobId });
 
   // Dados do formulário (vazios inicialmente)
   const [formData, setFormData] = useState({
@@ -1331,6 +1335,9 @@ export default function UnifiedAdGeneratorCopy02() {
     const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
     console.log('🔑 [Teste Paralelo] Registrando job autorizado:', jobId);
 
+    // Salvar jobId para tracking em tempo real
+    setCurrentJobId(jobId);
+
     // CRÍTICO: Obter userId de forma confiável (não depender do state)
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     const effectiveUserId = currentUser?.id || userId;
@@ -1376,6 +1383,8 @@ export default function UnifiedAdGeneratorCopy02() {
       request_id: `parallel_test_${Date.now()}`,
       job_id: jobId, // CRÍTICO: enviar jobId para o n8n (snake_case para compatibilidade)
       jobId: jobId,  // CRÍTICO: também camelCase para garantir
+      productId: productId, // CRÍTICO: enviar productId para tracking no Supabase
+      product_id: productId, // snake_case para compatibilidade
       product_name: formData.nome,
       productName: formData.nome,
       user_id: effectiveUserId, // Usar effectiveUserId (confiável)
@@ -1501,6 +1510,13 @@ export default function UnifiedAdGeneratorCopy02() {
     const startTime = Date.now();
     setStep1(prev => ({ ...prev, status: "running", startedAt: new Date().toISOString(), error: null }));
 
+    // ✅ Garantir que temos um jobId para tracking, mesmo em execução avulsa
+    const effectiveJobId = currentJobId || `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    if (!currentJobId) {
+      setCurrentJobId(effectiveJobId);
+      console.log('[executeStep1] 🆕 Novo JobId gerado para execução avulsa:', effectiveJobId);
+    }
+
     try {
       const payload = {
         product_name: formData.nome,
@@ -1509,6 +1525,13 @@ export default function UnifiedAdGeneratorCopy02() {
         original_text: formData.descricao_curta || formData.nome,
         request_id: `unified_${Date.now()}`,
         user_id: userId,
+        tracking_id: effectiveJobId,
+        trackingId: effectiveJobId,
+        job_id: effectiveJobId,
+        jobId: effectiveJobId,
+        product_id: productId,
+        productId: productId,
+        productName: formData.nome,
         seo: {
           especificacoes: formData.descricao_curta || '',
           descricao: formData.descricao_curta || ''
@@ -1534,6 +1557,21 @@ export default function UnifiedAdGeneratorCopy02() {
 
       console.log('[executeStep1] Resposta do proxy:', proxyResponse);
       const data = proxyResponse;
+
+      // Se a resposta for um "Enfileirado" (Fila Redis), não finalizamos com sucesso ainda
+      if (data.status === 'queued' || data.message === 'Queued' || data.jobId) {
+        console.log('[executeStep1] ⏳ Job enfileirado no Redis. Aguardando conclusão via Realtime...');
+        setStep1(prev => ({
+          ...prev,
+          status: "running",
+          error: null,
+          message: "Processando na fila (Atlas)..."
+        }));
+
+        // Retornamos algo que indique que está em progresso
+        return { async: true, trackingId: currentJobId };
+      }
+
       const result = {
         topicos_conversao: data.topicos_conversao || null,
         palavras_chave_seo: data.palavras_chave_seo || null,
@@ -1607,6 +1645,12 @@ export default function UnifiedAdGeneratorCopy02() {
     const startTime = Date.now();
     setStep2(prev => ({ ...prev, status: "running", startedAt: new Date().toISOString(), error: null }));
 
+    // ✅ Garantir que temos um jobId para tracking
+    const effectiveJobId = currentJobId || `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    if (!currentJobId) {
+      setCurrentJobId(effectiveJobId);
+    }
+
     try {
       const payload = {
         product_name: formData.nome,
@@ -1615,6 +1659,13 @@ export default function UnifiedAdGeneratorCopy02() {
         user_id: userId,
         user_email: userEmail,
         request_id: `copywriting_${Date.now()}`,
+        tracking_id: effectiveJobId,
+        trackingId: effectiveJobId,
+        job_id: effectiveJobId,
+        jobId: effectiveJobId,
+        product_id: productId,
+        productId: productId,
+        productName: formData.nome,
         seo: {
           especificacoes: formData.descricao_curta || '',
           descricao: formData.descricao_curta || ''
@@ -1742,10 +1793,15 @@ export default function UnifiedAdGeneratorCopy02() {
       return;
     }
 
-    console.log('ðŸš€ [MagicFlow] Iniciando sequÃªncia de agentes de conversão...');
+    // Gerar jobId IMEDIATAMENTE para tracking no n8n
+    const trackingJobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    setCurrentJobId(trackingJobId);
+    console.log('[MagicFlow] JobId de tracking criado:', trackingJobId);
+
+    console.log('[MagicFlow] Iniciando sequencia de agentes de conversao...');
     setIsMagicFlowExecuting(true);
-    setWasAutomationStarted(true); // ✅ Marca que automação começou
-    setInitialImageCount(productImages.length); // ✅ Trava contador inicial para saber o que é novo
+    setWasAutomationStarted(true); // Marca que automacao comecou
+    setInitialImageCount(productImages.length); // Trava contador inicial para saber o que e novo
 
     try {
       // ===== ETAPA 1: ATLAS (Comando Unificado) =====
@@ -2235,6 +2291,8 @@ export default function UnifiedAdGeneratorCopy02() {
           const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
           const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
+          // NOTA: currentJobId já foi setado no handleStartGeneration para tracking
+
           const dbRecord = {
             job_id: jobId,
             user_id: userId,
@@ -2267,6 +2325,8 @@ export default function UnifiedAdGeneratorCopy02() {
               body = {
                 request_id: `req_${jobId}`,
                 job_id: jobId,
+                tracking_id: currentJobId, // ID para tracking em tempo real no Supabase
+                trackingId: currentJobId,
                 user_id: userId,
                 timestamp: new Date().toISOString(),
                 source: 'visual-package-magica',
@@ -2294,6 +2354,8 @@ export default function UnifiedAdGeneratorCopy02() {
                 request_id: `req_${jobId}`,
                 job_id: jobId,
                 jobId: jobId,
+                tracking_id: currentJobId, // ID para tracking em tempo real no Supabase
+                trackingId: currentJobId,
                 user_id: userId,
                 userId: userId,
                 product_name: formData.nome,
@@ -2375,6 +2437,11 @@ export default function UnifiedAdGeneratorCopy02() {
       toast.error('Preencha o nome do produto e adicione imagens.');
       return;
     }
+
+    // Gerar jobId IMEDIATAMENTE para iniciar tracking
+    const trackingJobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    setCurrentJobId(trackingJobId);
+    console.log('🔗 [handleStartGeneration] JobId de tracking criado:', trackingJobId);
 
     setWorkflowStep('generating');
 
@@ -2812,18 +2879,23 @@ export default function UnifiedAdGeneratorCopy02() {
                       </p>
                     </div>
 
-                    {/* Tracking em tempo real do n8n via Supabase */}
-                    {workflowSteps.length > 0 && (
-                      <div className="mt-6 w-full">
-                        <WorkflowProgressTracker
-                          sessionId={productId}
-                          title="Status do Workflow n8n"
-                          showHeader={true}
-                          compact={false}
-                          className="bg-white/80 backdrop-blur-sm shadow-lg"
-                        />
-                      </div>
-                    )}
+                    {/* Tracking em tempo real do n8n via Supabase - SEMPRE visível durante geração */}
+                    <div className="mt-6 w-full">
+                      <WorkflowProgressTracker
+                        sessionId={currentJobId || ''}
+                        title="Aguardando servidor responder"
+                        showHeader={true}
+                        compact={false}
+                        timeoutMs={300000} // 5 minutos para teste - VOLTAR para 45000 depois
+                        className="bg-white/80 backdrop-blur-sm shadow-lg"
+                        onTimeout={() => {
+                          toast.error("Servidor sobrecarregado. Tente novamente mais tarde.");
+                          setWorkflowStep('selection');
+                          setSelectedPackageId(null);
+                          setCurrentJobId(null); // Limpar jobId ao dar timeout
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               )}

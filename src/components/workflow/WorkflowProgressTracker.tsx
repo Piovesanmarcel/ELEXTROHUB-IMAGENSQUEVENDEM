@@ -1,3 +1,4 @@
+import React from 'react';
 import { useWorkflowTracking, WorkflowStep } from '@/hooks/useWorkflowTracking';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -10,7 +11,9 @@ import {
   Clock,
   Wifi,
   WifiOff,
-  RefreshCw
+  RefreshCw,
+  ServerCrash,
+  RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -20,6 +23,8 @@ interface WorkflowProgressTrackerProps {
   showHeader?: boolean;
   compact?: boolean;
   className?: string;
+  timeoutMs?: number;
+  onRetry?: () => void;
 }
 
 const StatusIcon = ({ status }: { status: WorkflowStep['status'] }) => {
@@ -29,6 +34,7 @@ const StatusIcon = ({ status }: { status: WorkflowStep['status'] }) => {
     case 'completed':
       return <CheckCircle2 className="h-4 w-4 text-green-500" />;
     case 'error':
+    case 'timeout':
       return <AlertCircle className="h-4 w-4 text-red-500" />;
     default:
       return <Clock className="h-4 w-4 text-muted-foreground" />;
@@ -40,14 +46,16 @@ const StatusBadge = ({ status }: { status: WorkflowStep['status'] }) => {
     pending: 'bg-gray-100 text-gray-700',
     running: 'bg-blue-100 text-blue-700 animate-pulse',
     completed: 'bg-green-100 text-green-700',
-    error: 'bg-red-100 text-red-700'
+    error: 'bg-red-100 text-red-700',
+    timeout: 'bg-orange-100 text-orange-700'
   };
 
   const labels: Record<WorkflowStep['status'], string> = {
     pending: 'Pendente',
     running: 'Executando',
     completed: 'Concluído',
-    error: 'Erro'
+    error: 'Erro',
+    timeout: 'Timeout'
   };
 
   return (
@@ -59,11 +67,14 @@ const StatusBadge = ({ status }: { status: WorkflowStep['status'] }) => {
 
 export function WorkflowProgressTracker({
   sessionId,
-  title = 'Progresso do Workflow',
+  title = 'Aguardando servidor responder',
   showHeader = true,
   compact = false,
-  className
-}: WorkflowProgressTrackerProps) {
+  className,
+  timeoutMs = 30000,
+  onRetry,
+  onTimeout
+}: WorkflowProgressTrackerProps & { onTimeout?: () => void }) {
   const {
     steps,
     currentStep,
@@ -72,10 +83,44 @@ export function WorkflowProgressTracker({
     isConnected,
     hasError,
     isComplete,
-    refetch
-  } = useWorkflowTracking({ sessionId, enabled: !!sessionId });
+    isTimedOut,
+    error,
+    refetch,
+    clearSession
+  } = useWorkflowTracking({ sessionId, enabled: !!sessionId, timeoutMs });
 
   if (!sessionId) return null;
+
+  // Chamar onTimeout automaticamente quando der timeout
+  React.useEffect(() => {
+    if (isTimedOut && onTimeout) {
+      console.log('[WorkflowProgressTracker] Timeout! Finalizando processo automaticamente...');
+      onTimeout();
+    }
+  }, [isTimedOut, onTimeout]);
+
+  // Exibir mensagem de TIMEOUT / SERVIDOR SOBRECARREGADO (sem botões - finaliza automaticamente)
+  if (isTimedOut) {
+    return (
+      <Card className={cn('w-full border-orange-300 bg-orange-50', className)}>
+        <CardContent className="py-6">
+          <div className="flex flex-col items-center justify-center text-center space-y-3">
+            <div className="p-3 bg-orange-100 rounded-full">
+              <ServerCrash className="h-10 w-10 text-orange-600" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-orange-800">
+                Servidor Sobrecarregado
+              </h3>
+              <p className="text-sm text-orange-700 max-w-md">
+                Não recebemos resposta em {timeoutMs / 1000}s. Tente novamente mais tarde.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Versão compacta (só mostra etapa atual)
   if (compact && steps.length > 0) {
@@ -107,7 +152,9 @@ export function WorkflowProgressTracker({
         ) : hasError ? (
           <>
             <AlertCircle className="h-4 w-4 text-red-500" />
-            <span className="text-sm font-medium text-red-700">Erro no processo</span>
+            <span className="text-sm font-medium text-red-700">
+              {error || 'Erro no processo'}
+            </span>
           </>
         ) : (
           <span className="text-sm text-muted-foreground">Aguardando...</span>
@@ -176,6 +223,7 @@ export function WorkflowProgressTracker({
                   step.status === 'running' && 'bg-blue-50 border border-blue-200',
                   step.status === 'completed' && 'bg-green-50/50',
                   step.status === 'error' && 'bg-red-50 border border-red-200',
+                  step.status === 'timeout' && 'bg-orange-50 border border-orange-200',
                   step.status === 'pending' && 'bg-muted/30'
                 )}
               >
@@ -197,7 +245,8 @@ export function WorkflowProgressTracker({
                       'font-medium text-sm',
                       step.status === 'running' && 'text-blue-700',
                       step.status === 'completed' && 'text-green-700',
-                      step.status === 'error' && 'text-red-700'
+                      step.status === 'error' && 'text-red-700',
+                      step.status === 'timeout' && 'text-orange-700'
                     )}>
                       {step.step_name}
                     </span>

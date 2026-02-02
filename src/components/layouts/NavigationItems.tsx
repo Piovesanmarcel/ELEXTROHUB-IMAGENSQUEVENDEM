@@ -110,6 +110,12 @@ export const navigationItems: NavigationItem[] = [
     icon: Wand2,
     badge: null
   },
+  {
+    name: "Gerador de Kits",
+    href: "/kit-generator",
+    icon: Sparkles,
+    badge: "NOVO"
+  },
 
   // { 
   //   name: "🎨 Templates n8n", 
@@ -228,12 +234,12 @@ export const navigationItems: NavigationItem[] = [
   //   icon: BarChart3,
   //   badge: null 
   // },
-  // { 
-  //   name: "Custos de IA", 
-  //   href: "/custos-ia", 
-  //   icon: DollarSign,
-  //   badge: "NOVO" 
-  // },
+  {
+    name: "Custos de IA",
+    href: "/custos-ia",
+    icon: DollarSign,
+    badge: "NOVO"
+  },
   // { 
   //   name: "Marketplaces", 
   //   href: "/marketplaces", 

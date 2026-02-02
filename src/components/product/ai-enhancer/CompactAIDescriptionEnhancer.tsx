@@ -36,6 +36,24 @@ export const CompactAIDescriptionEnhancer = ({
   // ✅ Hook simplificado - 100% em memória, sem persistência
   const { unifiedResults, setUnifiedResults } = useUnifiedResults();
 
+  useEffect(() => {
+    if (externalUnifiedData) {
+      console.log('📡 [ENHANCER] Prop externalUnifiedData mudou:', {
+        hasData: !!externalUnifiedData,
+        keys: Object.keys(externalUnifiedData)
+      });
+    }
+  }, [externalUnifiedData]);
+
+  useEffect(() => {
+    if (unifiedResults) {
+      console.log('💾 [ENHANCER] Estado local unifiedResults mudou:', {
+        hasData: !!unifiedResults,
+        keys: Object.keys(unifiedResults)
+      });
+    }
+  }, [unifiedResults]);
+
   // ✅ Combinar resultados INDEPENDENTEMENTE - cada fonte adiciona seus dados
   const combinedResults = useMemo((): UnifiedAIResponse | null => {
     // Verificar se há QUALQUER dado disponível
