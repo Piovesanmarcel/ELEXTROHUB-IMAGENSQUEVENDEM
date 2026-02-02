@@ -22,6 +22,50 @@ function generateCacheKey(imageData: string, prompt: string, action: string): st
   return hash;
 }
 
+// Função para detectar Português e traduzir/otimizar para prompt de imagem em Inglês
+async function detectAndTranslatePrompt(prompt: string, geminiApiKey: string, requestId: string): Promise<string> {
+  // Regex simples para detectar Português (presença de acentos comuns ou palavras chave)
+  const portugueseRegex = /[áéíóúâêîôûãõçÁÉÍÓÚÂÊÎÔÛÃÕÇ]|(\b(um|uma|o|a|os|as|em|de|do|com|para|fundo|imagem|produto)\b)/i;
+
+  if (!portugueseRegex.test(prompt)) {
+    console.log(`🌐 [${requestId}] Prompt já parece estar em Inglês ou é técnico. Pulando tradução.`);
+    return prompt;
+  }
+
+  console.log(`🌐 [${requestId}] Português detectado. Traduzindo e otimizando prompt...`);
+
+  try {
+    const translationPrompt = `Translate and optimize this Portuguese product photography prompt for an AI image generator (like Midjourney or DALL-E).
+Return ONLY the English technical prompt, optimized with photography terms.
+Original: "${prompt}"`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: translationPrompt }] }]
+        })
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const translated = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (translated) {
+        console.log(`🌐 [${requestId}] Prompt traduzido/otimizado: ${translated.substring(0, 100)}...`);
+        return translated;
+      }
+    }
+    console.warn(`🌐 [${requestId}] Falha na tradução via API, enviando original.`);
+    return prompt;
+  } catch (err) {
+    console.error(`🌐 [${requestId}] Erro na tradução:`, err);
+    return prompt;
+  }
+}
+
 // Função de retry com fallback - 3 níveis (APENAS Gemini)
 async function retryWithFallback(
   requestId: string,
@@ -254,7 +298,7 @@ serve(async (req) => {
       });
     }
 
-    const { imageData, prompt, action, dimensions, apiKeyId, productContext } = parsedBody;
+    let { imageData, prompt, action, dimensions, apiKeyId, productContext } = parsedBody;
 
     // Log do contexto do produto recebido
     if (productContext) {
@@ -352,6 +396,11 @@ serve(async (req) => {
       isPromptGeneration,
       isCopywritingProfessional
     });
+
+    // 🌐 TRADUÇÃO AUTOMÁTICA (se necessário)
+    if (prompt && !isCopywritingProfessional) {
+      prompt = await detectAndTranslatePrompt(prompt, geminiApiKey, requestId);
+    }
 
     // CRÍTICO: Processar image data ANTES de qualquer outra lógica
     // Agora suporta múltiplas imagens
@@ -1327,21 +1376,24 @@ STRICTLY FORBIDDEN: text, letters, words, watermarks, logos that weren't in orig
               // Obter userId do body (passado pelo ai-chat-proxy)
               const logUserId = parsedBody._userId || null;
 
-              await supabase.from('ai_usage_logs').insert({
+              await supabase.from('ai_usage_log').insert({
                 user_id: logUserId,
-                function_name: 'gemini-background-generator',
-                api_provider: 'gemini',
-                model_used: modelUsed,
-                command: 'generate_image',
-                prompt_tokens: promptTokens,
-                completion_tokens: TOKENS_PER_IMAGE,
+                provider: 'gemini',
+                model: modelUsed,
+                operation: 'generate_image',
+                input_tokens: promptTokens,
+                output_tokens: TOKENS_PER_IMAGE,
                 total_tokens: promptTokens + TOKENS_PER_IMAGE,
-                estimated_cost_usd: totalCostUSD,
-                estimated_cost_brl: totalCostBRL,
-                usd_to_brl_rate: USD_TO_BRL,
-                execution_time_ms: Date.now() - parseInt(requestId, 36),
+                images_count: 1,
+                total_cost: totalCostUSD,
+                response_time_ms: Date.now() - parseInt(requestId, 36),
                 success: true,
-                request_id: requestId
+                job_id: requestId,
+                request_metadata: {
+                  action,
+                  dimensions,
+                  hasProductContext: !!productContext
+                }
               });
               console.log(`📝 [${requestId}] Log de geração de imagem salvo: $${totalCostUSD.toFixed(4)} / R$${totalCostBRL.toFixed(2)}`);
             } catch (logError) {

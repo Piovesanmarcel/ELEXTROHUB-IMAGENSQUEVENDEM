@@ -118,6 +118,7 @@ VALUES
 
 INSERT INTO ai_pricing (provider, model, input_price_per_1m, output_price_per_1m, image_price, notes)
 VALUES
+  -- OpenAI DALL-E
   ('openai', 'dall-e-3-standard-1024', NULL, NULL, 0.040, 'DALL-E 3 Standard 1024x1024'),
   ('openai', 'dall-e-3-standard-1792', NULL, NULL, 0.080, 'DALL-E 3 Standard 1792x1024'),
   ('openai', 'dall-e-3-hd-1024', NULL, NULL, 0.080, 'DALL-E 3 HD 1024x1024'),
@@ -125,8 +126,19 @@ VALUES
   ('openai', 'dall-e-2-1024', NULL, NULL, 0.020, 'DALL-E 2 1024x1024'),
   ('openai', 'dall-e-2-512', NULL, NULL, 0.018, 'DALL-E 2 512x512'),
   ('openai', 'dall-e-2-256', NULL, NULL, 0.016, 'DALL-E 2 256x256'),
-  ('gemini', 'imagen-3', NULL, NULL, 0.040, 'Imagen 3 - Google'),
-  ('gemini', 'imagen-3-fast', NULL, NULL, 0.020, 'Imagen 3 Fast - Google');
+  -- OpenAI GPT Image (gpt-image-1)
+  ('openai', 'gpt-image-1-low', NULL, NULL, 0.011, 'GPT Image 1 Low Quality'),
+  ('openai', 'gpt-image-1-medium', NULL, NULL, 0.042, 'GPT Image 1 Medium Quality'),
+  ('openai', 'gpt-image-1-high', NULL, NULL, 0.167, 'GPT Image 1 High Quality'),
+  -- Google Imagen
+  ('gemini', 'imagen-3', NULL, NULL, 0.040, 'Imagen 3 - Alta qualidade'),
+  ('gemini', 'imagen-3-fast', NULL, NULL, 0.020, 'Imagen 3 Fast - Mais rapido'),
+  -- Gemini com geracao de imagem (usa Imagen internamente)
+  ('gemini', 'gemini-2.0-flash-image', NULL, NULL, 0.040, 'Gemini 2.0 Flash + Imagen 3'),
+  ('gemini', 'gemini-2.5-flash-image', NULL, NULL, 0.040, 'Gemini 2.5 Flash + Imagen 3'),
+  ('gemini', 'gemini-2.5-pro-image', NULL, NULL, 0.040, 'Gemini 2.5 Pro + Imagen 3'),
+  ('gemini', 'gemini-3-flash-image', NULL, NULL, 0.040, 'Gemini 3 Flash + Imagen 3'),
+  ('gemini', 'gemini-3-pro-image', NULL, NULL, 0.040, 'Gemini 3 Pro + Imagen 3');
 
 -- =====================================================
 -- RESULTADO

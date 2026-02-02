@@ -21,7 +21,7 @@ async function urlToBase64(url: string): Promise<string> {
     }
     throw new Error('Formato base64 inválido');
   }
-  
+
   // URL http(s) - fazer fetch e converter
   const response = await fetch(url);
   if (!response.ok) {
@@ -29,16 +29,16 @@ async function urlToBase64(url: string): Promise<string> {
   }
   const arrayBuffer = await response.arrayBuffer();
   const uint8Array = new Uint8Array(arrayBuffer);
-  
+
   // Processar em chunks para evitar "Maximum call stack size exceeded"
   const chunkSize = 8192;
   let binary = '';
-  
+
   for (let i = 0; i < uint8Array.length; i += chunkSize) {
     const chunk = uint8Array.subarray(i, i + chunkSize);
     binary += String.fromCharCode(...chunk);
   }
-  
+
   const base64 = btoa(binary);
   return base64;
 }
@@ -51,24 +51,24 @@ serve(async (req) => {
   // 🔐 Verificar chave interna do worker - BLOQUEAR CHAMADAS DIRETAS
   const internalKey = req.headers.get('x-internal-worker-key');
   const expectedKey = Deno.env.get('INTERNAL_WORKER_SECRET');
-  
+
   if (internalKey !== expectedKey) {
     console.log('❌ [MARKETING] Acesso negado - use a fila de geração');
     return new Response(
-      JSON.stringify({ 
-        success: false, 
+      JSON.stringify({
+        success: false,
         error: 'Acesso negado. Use a fila de geração assíncrona.',
         code: 'USE_QUEUE'
       }),
       { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-  
+
   console.log('✅ [MARKETING] Acesso autorizado via worker');
 
   try {
     const { templateId, productData, apiKeyId, promptMode = 'complete' } = await req.json();
-    
+
     console.log('[generate-marketing-image] Recebendo requisição:', {
       templateId,
       hasProductData: !!productData,
@@ -87,8 +87,8 @@ serve(async (req) => {
 
     // Verificar se há imagens (da galeria ou aiImages)
     const hasImages = (productData.selectedGalleryImages && productData.selectedGalleryImages.length > 0) ||
-                      (productData.aiImages && productData.aiImages.length > 0);
-    
+      (productData.aiImages && productData.aiImages.length > 0);
+
     if (!hasImages) {
       throw new Error('Nenhuma imagem de produto disponível');
     }
@@ -99,23 +99,23 @@ serve(async (req) => {
 
     // 🔑 Determinar qual API key usar
     let GOOGLE_GEMINI_API_KEY: string | undefined;
-    
+
     if (apiKeyId && apiKeyId !== 'default') {
       // Buscar key do usuário no banco
       console.log('[generate-marketing-image] Buscando API key do usuário:', apiKeyId);
-      
+
       const { data: keyData, error: keyError } = await supabaseClient
         .from('user_api_keys')
         .select('api_key_encrypted')
         .eq('id', apiKeyId)
         .eq('provider', 'gemini')
         .single();
-      
+
       if (keyError || !keyData) {
         console.error('[generate-marketing-image] API Key não encontrada:', keyError);
         throw new Error('API Key selecionada não encontrada');
       }
-      
+
       // Descriptografar
       try {
         GOOGLE_GEMINI_API_KEY = atob(keyData.api_key_encrypted);
@@ -147,7 +147,7 @@ serve(async (req) => {
 
     // Contar zonas de produto para instruir múltiplas imagens
     const zones = template.zones as any[];
-    const productZones = zones.filter(zone => 
+    const productZones = zones.filter(zone =>
       zone.type === 'image' && zone.dataSource === 'product.image'
     );
     const productZonesCount = productZones.length;
@@ -163,20 +163,20 @@ serve(async (req) => {
 
     // Construir prompt detalhado para o Gemini
     const dimensions = template.dimensions as { width: number; height: number };
-    
+
     // 🎯 MODO COMPLETO FIEL: Gerar descrições das zonas COM posição e estilo (formato compacto)
     // Isso permite que o Gemini posicione elementos exatamente onde estão no template
     let zoneDescriptionsComplete = zones.map((zone) => {
       const pos = zone.position as { x: number; y: number; width: number; height: number } | undefined;
-      const style = zone.style as { 
-        fontSize?: string; fontWeight?: string; fontFamily?: string; 
+      const style = zone.style as {
+        fontSize?: string; fontWeight?: string; fontFamily?: string;
         color?: string; backgroundColor?: string; borderRadius?: string;
         textAlign?: string;
       } | undefined;
-      
+
       // Formatar posição de forma compacta: [x,y wxh]
       const posInfo = pos ? `[${pos.x},${pos.y} ${pos.width}x${pos.height}]` : '';
-      
+
       // Formatar estilo de forma compacta (apenas valores relevantes)
       const styleInfo = style ? [
         style.fontSize,
@@ -187,7 +187,7 @@ serve(async (req) => {
         style.borderRadius && style.borderRadius !== '0px' ? `radius:${style.borderRadius}` : '',
         style.textAlign && style.textAlign !== 'left' ? `align:${style.textAlign}` : ''
       ].filter(Boolean).join(' ') : '';
-      
+
       if (zone.type === 'image') {
         if (zone.dataSource === 'product.image') {
           const zoneIndex = productZones.findIndex(z => z.id === zone.id);
@@ -199,7 +199,7 @@ serve(async (req) => {
       } else if (zone.type === 'text') {
         let textContent = '';
         let textType = '';
-        
+
         if (zone.dataSource === 'product.name') {
           textContent = productData.productName || productData.unifiedData?.name || '';
           textType = 'NOME';
@@ -218,15 +218,15 @@ serve(async (req) => {
         } else {
           textType = 'TEXTO';
         }
-        
+
         const content = textContent || `Criar texto sobre ${productData.productName}`;
         return `${textType} ${posInfo} ${styleInfo}: "${content}"`;
       } else if (zone.type === 'badge') {
-        const badgeText = zone.dataSource === 'static.discount' ? '50% OFF' : 
-                          zone.dataSource?.includes('static:') ? zone.dataSource.replace('static:', '') : 'DESTAQUE';
+        const badgeText = zone.dataSource === 'static.discount' ? '50% OFF' :
+          zone.dataSource?.includes('static:') ? zone.dataSource.replace('static:', '') : 'DESTAQUE';
         return `BADGE ${posInfo} ${styleInfo}: "${badgeText}"`;
       }
-      
+
       return '';
     }).filter(desc => desc !== '').join('\n');
 
@@ -242,7 +242,7 @@ serve(async (req) => {
         }
       } else if (zone.type === 'text') {
         let textContent = '';
-        
+
         if (zone.dataSource === 'product.name') {
           textContent = productData.productName || '';
         } else if (zone.dataSource === 'ai.benefit') {
@@ -254,14 +254,14 @@ serve(async (req) => {
         } else if (zone.dataSource === 'ai.title' || zone.dataSource === 'ai.headline') {
           textContent = productData.unifiedData?.headline || '';
         }
-        
+
         return textContent ? `Texto: "${textContent}"` : '';
       } else if (zone.type === 'badge') {
-        const badgeText = zone.dataSource === 'static.discount' ? '50% OFF' : 
-                          zone.dataSource?.includes('static:') ? zone.dataSource.replace('static:', '') : 'DESTAQUE';
+        const badgeText = zone.dataSource === 'static.discount' ? '50% OFF' :
+          zone.dataSource?.includes('static:') ? zone.dataSource.replace('static:', '') : 'DESTAQUE';
         return `Badge: "${badgeText}"`;
       }
-      
+
       return '';
     }).filter(desc => desc !== '').join('\n');
 
@@ -278,15 +278,15 @@ serve(async (req) => {
     const zoneDescriptionsMinimal = `Inserir: ${elementsMinimal}`;
 
     // 📌 Selecionar versão baseado no modo
-    const zoneDescriptions = promptMode === 'complete' 
-      ? zoneDescriptionsComplete 
-      : promptMode === 'reduced' 
-        ? zoneDescriptionsReduced 
+    const zoneDescriptions = promptMode === 'complete'
+      ? zoneDescriptionsComplete
+      : promptMode === 'reduced'
+        ? zoneDescriptionsReduced
         : zoneDescriptionsMinimal;
-    
+
     console.log('[generate-marketing-image] Modo de prompt:', promptMode, '| Tamanho zoneDescriptions:', zoneDescriptions.length);
 
-    const colorSchemeDesc = template.color_scheme 
+    const colorSchemeDesc = template.color_scheme
       ? `Esquema de cores: primária ${(template.color_scheme as any).primary}, secundária ${(template.color_scheme as any).secondary}, acento ${(template.color_scheme as any).accent}, fundo ${(template.color_scheme as any).background}`
       : 'Usar cores vibrantes e profissionais';
 
@@ -444,17 +444,17 @@ SE QUALQUER TEXTO TECNICO, PLACEHOLDER OU IMAGEM DE REFERENCIA APARECER, TRABALH
     const placeholderReferenceBase64 = await urlToBase64(PLACEHOLDER_REFERENCE_URL);
 
     // 2. Converter template base
-    const templateBase64 = template.base_image_url 
-      ? await urlToBase64(template.base_image_url) 
+    const templateBase64 = template.base_image_url
+      ? await urlToBase64(template.base_image_url)
       : null;
-    
+
     // 3. Placeholder é a mesma imagem base do template
     const placeholderBase64 = templateBase64;
-    
+
     if (!placeholderBase64) {
       throw new Error('Template base image não disponível');
     }
-    
+
     // 4. Converter imagens do produto
     const productBase64Array = await Promise.all(
       productImages.map(url => urlToBase64(url))
@@ -579,15 +579,15 @@ SE QUALQUER TEXTO TECNICO, PLACEHOLDER OU IMAGEM DE REFERENCIA APARECER, TRABALH
           status: aiResponse.status,
           error: errorData
         });
-        
+
         const errorMessage = errorData.error?.message || `HTTP ${aiResponse.status}`;
-        
+
         // Detectar erro de cota excedida
-        const isQuotaExceeded = errorMessage.includes('exceeded your current quota') || 
-                                errorMessage.includes('Quota exceeded') ||
-                                errorMessage.includes('RESOURCE_EXHAUSTED') ||
-                                aiResponse.status === 429;
-        
+        const isQuotaExceeded = errorMessage.includes('exceeded your current quota') ||
+          errorMessage.includes('Quota exceeded') ||
+          errorMessage.includes('RESOURCE_EXHAUSTED') ||
+          aiResponse.status === 429;
+
         if (isQuotaExceeded) {
           console.error('[generate-marketing-image] ⚠️ LIMITE DIÁRIO ATINGIDO - QUOTA EXCEDIDA');
           return new Response(
@@ -603,7 +603,7 @@ SE QUALQUER TEXTO TECNICO, PLACEHOLDER OU IMAGEM DE REFERENCIA APARECER, TRABALH
             }
           );
         }
-        
+
         throw new Error(`Erro ao gerar imagem com Google Gemini: ${errorMessage}`);
       }
 
@@ -615,7 +615,7 @@ SE QUALQUER TEXTO TECNICO, PLACEHOLDER OU IMAGEM DE REFERENCIA APARECER, TRABALH
       if (finishReason === 'MALFORMED_FUNCTION_CALL') {
         console.warn(`[generate-marketing-image] ⚠️ MALFORMED_FUNCTION_CALL na tentativa ${attempt}, retrying...`);
         lastError = 'MALFORMED_FUNCTION_CALL';
-        
+
         // Aguardar antes de tentar novamente (exponential backoff)
         if (attempt < MAX_RETRIES) {
           const waitTime = 1000 * attempt;
@@ -638,7 +638,7 @@ SE QUALQUER TEXTO TECNICO, PLACEHOLDER OU IMAGEM DE REFERENCIA APARECER, TRABALH
 
     // Extrair imagem do formato do Google (inlineData ao invés de image_url)
     const generatedParts = aiData.candidates?.[0]?.content?.parts || [];
-    const imagePart = generatedParts.find((part: any) => 
+    const imagePart = generatedParts.find((part: any) =>
       part.inlineData?.mimeType?.startsWith('image/')
     );
 
@@ -672,7 +672,7 @@ SE QUALQUER TEXTO TECNICO, PLACEHOLDER OU IMAGEM DE REFERENCIA APARECER, TRABALH
       // Obter user_id do token de autorização
       const authHeader = req.headers.get('authorization');
       let userId: string | null = null;
-      
+
       if (authHeader) {
         const token = authHeader.replace('Bearer ', '');
         const { data: { user } } = await supabaseClient.auth.getUser(token);
@@ -695,20 +695,22 @@ SE QUALQUER TEXTO TECNICO, PLACEHOLDER OU IMAGEM DE REFERENCIA APARECER, TRABALH
         const estimatedCostUSD = inputCost + imageCost;
         const estimatedCostBRL = estimatedCostUSD * USD_TO_BRL;
 
-        await supabaseClient.from('gemini_usage_logs').insert({
+        await supabaseClient.from('ai_usage_log').insert({
           user_id: userId,
-          operation_type: 'template_marketing',
-          model_used: 'gemini-3-pro-image-preview',
-          prompt_tokens: estimatedPromptTokens,
-          candidates_tokens: 0,
+          provider: 'gemini',
+          model: 'gemini-3-pro-image-preview',
+          operation: 'template_marketing',
+          input_tokens: estimatedPromptTokens,
+          output_tokens: 0,
           total_tokens: estimatedPromptTokens,
-          images_generated: 1,
-          estimated_cost_usd: estimatedCostUSD,
-          estimated_cost_brl: estimatedCostBRL,
-          usd_to_brl_rate: USD_TO_BRL,
-          source: 'templates',
-          api_key_id: apiKeyId && apiKeyId !== 'default' ? apiKeyId : null,
-          api_key_name: apiKeyName
+          images_count: 1,
+          total_cost: estimatedCostUSD,
+          success: true,
+          job_id: userId + '-' + Date.now(),
+          request_metadata: {
+            template: template.name,
+            apiKeyName
+          }
         });
 
         console.log('[generate-marketing-image] 📊 Uso registrado no gemini_usage_logs:', {

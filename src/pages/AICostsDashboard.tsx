@@ -57,6 +57,7 @@ interface PricingInfo {
 interface DetailedCall {
   id: string;
   created_at: string;
+  brt_date: string;
   provider: string;
   model: string;
   operation: string;
@@ -72,6 +73,13 @@ interface DetailedCall {
   response_time_ms?: number;
 }
 
+interface FxRate {
+  rate_date: string;
+  usd_brl: number;
+  reference_date?: string | null;
+  source?: string | null;
+}
+
 // Cores para graficos
 const CHART_COLORS = {
   gemini: '#3B82F6',
@@ -82,6 +90,37 @@ const CHART_COLORS = {
 
 const PIE_COLORS = ['#3B82F6', '#22C55E', '#F97316', '#8B5CF6', '#EC4899', '#14B8A6'];
 
+const brtDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
+
+const brtDateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo',
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit'
+});
+
+const brtDateTimeFullFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit'
+});
+
+const toBrtDate = (value: string) => brtDateFormatter.format(new Date(value));
+const toBrtDateTime = (value: string) => brtDateTimeFormatter.format(new Date(value));
+const toBrtDateTimeFull = (value: string) => brtDateTimeFullFormatter.format(new Date(value));
+const toShortBrtDate = (value: string) => value.split('-').reverse().slice(0, 2).join('/');
+
 export default function AICostsDashboard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +128,7 @@ export default function AICostsDashboard() {
   const [dailySummary, setDailySummary] = useState<UsageSummary[]>([]);
   const [detailedCalls, setDetailedCalls] = useState<DetailedCall[]>([]);
   const [pricing, setPricing] = useState<PricingInfo[]>([]);
+  const [fxRates, setFxRates] = useState<Record<string, FxRate>>({});
   const [totals, setTotals] = useState({
     totalCost: 0,
     totalTokens: 0,
@@ -134,6 +174,7 @@ export default function AICostsDashboard() {
       setDetailedCalls((summaryData || []).map((row: any) => ({
         id: row.id,
         created_at: row.created_at,
+        brt_date: toBrtDate(row.created_at),
         provider: row.provider,
         model: row.model,
         operation: row.operation || 'text',
@@ -151,7 +192,7 @@ export default function AICostsDashboard() {
 
       const grouped: Record<string, UsageSummary> = {};
       (summaryData || []).forEach((row: any) => {
-        const date = new Date(row.created_at).toISOString().split('T')[0];
+        const date = toBrtDate(row.created_at);
         const key = `${date}-${row.provider}-${row.model}`;
 
         if (!grouped[key]) {
@@ -177,9 +218,11 @@ export default function AICostsDashboard() {
         grouped[key].total_cost_usd += parseFloat(row.total_cost) || 0;
       });
 
-      const summaryList = Object.values(grouped).sort((a, b) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
+      const summaryList = Object.values(grouped).sort((a, b) => {
+        const timeA = new Date(`${a.date}T00:00:00`).getTime();
+        const timeB = new Date(`${b.date}T00:00:00`).getTime();
+        return timeB - timeA;
+      });
       setDailySummary(summaryList);
 
       const totalCost = summaryList.reduce((acc, s) => acc + s.total_cost_usd, 0);
@@ -202,9 +245,86 @@ export default function AICostsDashboard() {
     }
   };
 
+  const loadFxRates = async (dates: string[]) => {
+    const uniqueDates = Array.from(new Set(dates.filter(Boolean)));
+    if (uniqueDates.length === 0) {
+      setFxRates({});
+      return;
+    }
+
+    try {
+      const { data: existingRates, error: existingError } = await supabase
+        .from('fx_rates')
+        .select('rate_date, usd_brl, reference_date, source')
+        .in('rate_date', uniqueDates);
+
+      if (existingError) {
+        console.error('Erro ao buscar cotacoes:', existingError);
+      }
+
+      const ratesMap: Record<string, FxRate> = {};
+      (existingRates || []).forEach((rate: any) => {
+        ratesMap[rate.rate_date] = {
+          rate_date: rate.rate_date,
+          usd_brl: Number(rate.usd_brl),
+          reference_date: rate.reference_date,
+          source: rate.source
+        };
+      });
+
+      const missingDates = uniqueDates.filter(date => !ratesMap[date]);
+
+      if (missingDates.length > 0) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+
+        if (!accessToken) {
+          console.error('Sessao nao encontrada para buscar cotacoes:', sessionError);
+        }
+
+        const { error: invokeError } = await supabase.functions.invoke('fetch-fx-rate', {
+          body: { dates: missingDates },
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
+        });
+
+        if (invokeError) {
+          console.error('Erro ao buscar cotacoes externas:', invokeError);
+        }
+
+        const { data: refreshedRates, error: refreshedError } = await supabase
+          .from('fx_rates')
+          .select('rate_date, usd_brl, reference_date, source')
+          .in('rate_date', uniqueDates);
+
+        if (refreshedError) {
+          console.error('Erro ao atualizar cotacoes:', refreshedError);
+        } else {
+          (refreshedRates || []).forEach((rate: any) => {
+            ratesMap[rate.rate_date] = {
+              rate_date: rate.rate_date,
+              usd_brl: Number(rate.usd_brl),
+              reference_date: rate.reference_date,
+              source: rate.source
+            };
+          });
+        }
+      }
+
+      setFxRates(ratesMap);
+    } catch (error) {
+      console.error('Erro ao carregar cotacoes:', error);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [userId, period]);
+
+  useEffect(() => {
+    const todayBrt = toBrtDate(new Date().toISOString());
+    const dates = detailedCalls.map(call => call.brt_date);
+    loadFxRates([...dates, todayBrt]);
+  }, [detailedCalls]);
 
   // Metricas adicionais calculadas
   const additionalMetrics = useMemo(() => {
@@ -254,10 +374,10 @@ export default function AICostsDashboard() {
     });
 
     return Object.values(byDate)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .sort((a, b) => a.date.localeCompare(b.date))
       .map(d => ({
         ...d,
-        date: new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        date: d.date.split('-').reverse().slice(0, 2).join('/'),
         cost: parseFloat(d.cost.toFixed(4))
       }));
   }, [dailySummary]);
@@ -292,19 +412,27 @@ export default function AICostsDashboard() {
 
   // Exportar para Excel
   const exportToExcel = () => {
-    const data = filteredCalls.map(call => ({
-      'Data/Hora': new Date(call.created_at).toLocaleString('pt-BR'),
-      'Provider': call.provider,
-      'Modelo': call.model,
-      'Tipo': call.operation,
-      'Tokens Input': call.input_tokens,
-      'Tokens Output': call.output_tokens,
-      'Tokens Total': call.total_tokens,
-      'Imagens': call.images_count,
-      'Custo (USD)': call.total_cost.toFixed(6),
-      'Status': call.success ? 'Sucesso' : 'Erro',
-      'Job ID': call.job_id || '-'
-    }));
+    const data = filteredCalls.map(call => {
+      const fxRate = fxRates[call.brt_date]?.usd_brl;
+      const hasFxRate = typeof fxRate === 'number' && Number.isFinite(fxRate);
+      const brlCost = hasFxRate ? call.total_cost * fxRate : null;
+
+      return {
+        'Data/Hora': toBrtDateTimeFull(call.created_at),
+        'Provider': call.provider,
+        'Modelo': call.model,
+        'Tipo': call.operation,
+        'Tokens Input': call.input_tokens,
+        'Tokens Output': call.output_tokens,
+        'Tokens Total': call.total_tokens,
+        'Imagens': call.images_count,
+        'Custo (USD)': call.total_cost.toFixed(6),
+        'Cotacao USD/BRL': hasFxRate ? Number(fxRate.toFixed(2)) : '',
+        'Custo (BRL)': brlCost !== null ? Number(brlCost.toFixed(2)) : '',
+        'Status': call.success ? 'Sucesso' : 'Erro',
+        'Job ID': call.job_id || '-'
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -314,20 +442,42 @@ export default function AICostsDashboard() {
 
   // Exportar para CSV
   const exportToCSV = () => {
-    const headers = ['Data/Hora', 'Provider', 'Modelo', 'Tipo', 'Tokens Input', 'Tokens Output', 'Tokens Total', 'Imagens', 'Custo (USD)', 'Status', 'Job ID'];
-    const rows = filteredCalls.map(call => [
-      new Date(call.created_at).toLocaleString('pt-BR'),
-      call.provider,
-      call.model,
-      call.operation,
-      call.input_tokens,
-      call.output_tokens,
-      call.total_tokens,
-      call.images_count,
-      call.total_cost.toFixed(6),
-      call.success ? 'Sucesso' : 'Erro',
-      call.job_id || '-'
-    ]);
+    const headers = [
+      'Data/Hora',
+      'Provider',
+      'Modelo',
+      'Tipo',
+      'Tokens Input',
+      'Tokens Output',
+      'Tokens Total',
+      'Imagens',
+      'Custo (USD)',
+      'Cotacao USD/BRL',
+      'Custo (BRL)',
+      'Status',
+      'Job ID'
+    ];
+    const rows = filteredCalls.map(call => {
+      const fxRate = fxRates[call.brt_date]?.usd_brl;
+      const hasFxRate = typeof fxRate === 'number' && Number.isFinite(fxRate);
+      const brlCost = hasFxRate ? call.total_cost * fxRate : null;
+
+      return [
+        toBrtDateTimeFull(call.created_at),
+        call.provider,
+        call.model,
+        call.operation,
+        call.input_tokens,
+        call.output_tokens,
+        call.total_tokens,
+        call.images_count,
+        call.total_cost.toFixed(6),
+        hasFxRate ? fxRate.toFixed(2) : '',
+        brlCost !== null ? brlCost.toFixed(2) : '',
+        call.success ? 'Sucesso' : 'Erro',
+        call.job_id || '-'
+      ];
+    });
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -345,6 +495,38 @@ export default function AICostsDashboard() {
       maximumFractionDigits: 4
     }).format(value);
   };
+
+  const formatCurrencyBRL = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  };
+
+  const formatCurrencyBRLTable = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+    }).format(value);
+  };
+
+  const formatFxRate = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  };
+
+  const todayBrtDate = toBrtDate(new Date().toISOString());
+  const todayFxRate = fxRates[todayBrtDate];
+  const todayFxRateLabel = todayFxRate ? formatCurrencyBRL(todayFxRate.usd_brl) : '-';
+  const todayFxReference = todayFxRate?.reference_date && todayFxRate.reference_date !== todayBrtDate
+    ? toShortBrtDate(todayFxRate.reference_date)
+    : null;
 
   const formatNumber = (value: number) => {
     if (value >= 1000000) return `${(value / 1000000).toFixed(2)}M`;
@@ -406,7 +588,7 @@ export default function AICostsDashboard() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -418,6 +600,27 @@ export default function AICostsDashboard() {
               </div>
               <div className="p-3 bg-green-100 rounded-full">
                 <DollarSign className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Cotacao dolar hoje</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {todayFxRateLabel}
+                </p>
+                {todayFxReference && (
+                  <p className="text-xs text-muted-foreground">
+                    Ref: {todayFxReference}
+                  </p>
+                )}
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <TrendingUp className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -699,27 +902,41 @@ export default function AICostsDashboard() {
                         <th className="text-right py-3 px-2">Output</th>
                         <th className="text-right py-3 px-2">Imagens</th>
                         <th className="text-right py-3 px-2">Custo</th>
+                        <th className="text-right py-3 px-2">Cotacao USD/BRL</th>
+                        <th className="text-right py-3 px-2">Custo (BRL)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {dailySummary.map((row, idx) => (
-                        <tr key={idx} className="border-b hover:bg-muted/50">
-                          <td className="py-3 px-2">{row.date}</td>
-                          <td className="py-3 px-2">
-                            <Badge variant="outline" className="capitalize">
-                              {row.provider}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-2 font-mono text-xs">{row.model}</td>
-                          <td className="py-3 px-2 text-right">{row.total_calls}</td>
-                          <td className="py-3 px-2 text-right">{formatNumber(row.total_input_tokens)}</td>
-                          <td className="py-3 px-2 text-right">{formatNumber(row.total_output_tokens)}</td>
-                          <td className="py-3 px-2 text-right">{row.total_images || '-'}</td>
-                          <td className="py-3 px-2 text-right font-medium text-green-600">
-                            {formatCurrency(row.total_cost_usd)}
-                          </td>
-                        </tr>
-                      ))}
+                      {dailySummary.map((row, idx) => {
+                        const fxRate = fxRates[row.date]?.usd_brl;
+                        const hasFxRate = typeof fxRate === 'number' && Number.isFinite(fxRate);
+                        const brlCost = hasFxRate ? row.total_cost_usd * fxRate : null;
+
+                        return (
+                          <tr key={idx} className="border-b hover:bg-muted/50">
+                            <td className="py-3 px-2">{row.date}</td>
+                            <td className="py-3 px-2">
+                              <Badge variant="outline" className="capitalize">
+                                {row.provider}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-2 font-mono text-xs">{row.model}</td>
+                            <td className="py-3 px-2 text-right">{row.total_calls}</td>
+                            <td className="py-3 px-2 text-right">{formatNumber(row.total_input_tokens)}</td>
+                            <td className="py-3 px-2 text-right">{formatNumber(row.total_output_tokens)}</td>
+                            <td className="py-3 px-2 text-right">{row.total_images || '-'}</td>
+                            <td className="py-3 px-2 text-right font-medium text-green-600">
+                              {formatCurrency(row.total_cost_usd)}
+                            </td>
+                            <td className="py-3 px-2 text-right font-mono text-xs">
+                              {hasFxRate ? formatFxRate(fxRate) : '-'}
+                            </td>
+                            <td className="py-3 px-2 text-right font-medium text-emerald-700">
+                              {brlCost !== null ? formatCurrencyBRLTable(brlCost) : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -815,57 +1032,65 @@ export default function AICostsDashboard() {
                         <th className="text-right py-3 px-2">Output</th>
                         <th className="text-right py-3 px-2">Imagens</th>
                         <th className="text-right py-3 px-2">Custo</th>
+                        <th className="text-right py-3 px-2">Cotacao USD/BRL</th>
+                        <th className="text-right py-3 px-2">Custo (BRL)</th>
                         <th className="text-center py-3 px-2">Status</th>
                         <th className="text-left py-3 px-2">Job ID</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredCalls.slice(0, 100).map((call) => (
-                        <tr key={call.id} className="border-b hover:bg-muted/50">
-                          <td className="py-3 px-2 text-xs">
-                            {new Date(call.created_at).toLocaleString('pt-BR', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              second: '2-digit'
-                            })}
-                          </td>
-                          <td className="py-3 px-2">
-                            <Badge className={providerColors[call.provider] || 'bg-gray-500'}>
-                              {call.provider}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-2 font-mono text-xs">{call.model}</td>
-                          <td className="py-3 px-2">
-                            <Badge variant="outline" className="text-xs">
-                              {call.operation}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-2 text-right font-mono text-xs">
-                            {formatNumber(call.input_tokens)}
-                          </td>
-                          <td className="py-3 px-2 text-right font-mono text-xs">
-                            {formatNumber(call.output_tokens)}
-                          </td>
-                          <td className="py-3 px-2 text-right">
-                            {call.images_count > 0 ? call.images_count : '-'}
-                          </td>
-                          <td className="py-3 px-2 text-right font-medium text-green-600">
-                            {formatCurrency(call.total_cost)}
-                          </td>
-                          <td className="py-3 px-2 text-center">
-                            {call.success ? (
-                              <Badge className="bg-green-100 text-green-700 text-xs">OK</Badge>
-                            ) : (
-                              <Badge className="bg-red-100 text-red-700 text-xs">Erro</Badge>
-                            )}
-                          </td>
-                          <td className="py-3 px-2 font-mono text-xs text-muted-foreground truncate max-w-[120px]" title={call.job_id || '-'}>
-                            {call.job_id ? call.job_id.substring(0, 15) + '...' : '-'}
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredCalls.slice(0, 100).map((call) => {
+                        const fxRate = fxRates[call.brt_date]?.usd_brl;
+                        const hasFxRate = typeof fxRate === 'number' && Number.isFinite(fxRate);
+                        const brlCost = hasFxRate ? call.total_cost * fxRate : null;
+
+                        return (
+                          <tr key={call.id} className="border-b hover:bg-muted/50">
+                            <td className="py-3 px-2 text-xs">
+                              {toBrtDateTime(call.created_at)}
+                            </td>
+                            <td className="py-3 px-2">
+                              <Badge className={providerColors[call.provider] || 'bg-gray-500'}>
+                                {call.provider}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-2 font-mono text-xs">{call.model}</td>
+                            <td className="py-3 px-2">
+                              <Badge variant="outline" className="text-xs">
+                                {call.operation}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-2 text-right font-mono text-xs">
+                              {formatNumber(call.input_tokens)}
+                            </td>
+                            <td className="py-3 px-2 text-right font-mono text-xs">
+                              {formatNumber(call.output_tokens)}
+                            </td>
+                            <td className="py-3 px-2 text-right">
+                              {call.images_count > 0 ? call.images_count : '-'}
+                            </td>
+                            <td className="py-3 px-2 text-right font-medium text-green-600">
+                              {formatCurrency(call.total_cost)}
+                            </td>
+                            <td className="py-3 px-2 text-right font-mono text-xs">
+                              {hasFxRate ? formatFxRate(fxRate) : '-'}
+                            </td>
+                            <td className="py-3 px-2 text-right font-medium text-emerald-700">
+                              {brlCost !== null ? formatCurrencyBRLTable(brlCost) : '-'}
+                            </td>
+                            <td className="py-3 px-2 text-center">
+                              {call.success ? (
+                                <Badge className="bg-green-100 text-green-700 text-xs">OK</Badge>
+                              ) : (
+                                <Badge className="bg-red-100 text-red-700 text-xs">Erro</Badge>
+                              )}
+                            </td>
+                            <td className="py-3 px-2 font-mono text-xs text-muted-foreground truncate max-w-[120px]" title={call.job_id || '-'}>
+                              {call.job_id ? call.job_id.substring(0, 15) + '...' : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   {filteredCalls.length > 100 && (
