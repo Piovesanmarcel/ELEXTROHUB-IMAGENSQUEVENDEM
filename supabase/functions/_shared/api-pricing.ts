@@ -92,6 +92,16 @@ export const API_PRICING = {
       input: 1.10,
       output: 4.40,
     },
+  },
+  cloudinary: {
+    // Cloudinary Transformations (Credit-based)
+    // 1 Credit = 1000 Transformations = ~$0.44 USD (Plus Plan)
+    // Custo por upscale: ~$0.00044 USD
+    upscale: {
+      input: 0,
+      output: 0,
+      imageOutput: 0.00044,
+    }
   }
 };
 
@@ -116,14 +126,14 @@ export interface CostResult {
  * @returns Custo em USD e BRL
  */
 export function calculateCost(
-  provider: 'gemini' | 'openai',
+  provider: 'gemini' | 'openai' | 'cloudinary',
   model: string,
   inputTokens: number,
   outputTokens: number,
   imagesGenerated: number = 0
 ): CostResult {
   // Encontrar preços do modelo
-  const providerPricing = API_PRICING[provider];
+  const providerPricing = (API_PRICING as any)[provider];
   if (!providerPricing) {
     console.warn(`Provider desconhecido: ${provider}`);
     return { usd: 0, brl: 0 };
@@ -131,14 +141,14 @@ export function calculateCost(
 
   // Tentar encontrar modelo exato ou parcial
   let pricing = (providerPricing as any)[model];
-  
+
   if (!pricing) {
     // Buscar por modelo parcial (ex: gemini-2.5-flash-image-preview-xxxx)
-    const modelKey = Object.keys(providerPricing).find(key => 
+    const modelKey = Object.keys(providerPricing).find(key =>
       model.toLowerCase().includes(key.toLowerCase()) ||
       key.toLowerCase().includes(model.toLowerCase().split('-').slice(0, 4).join('-'))
     );
-    
+
     if (modelKey) {
       pricing = (providerPricing as any)[modelKey];
     }
@@ -147,9 +157,11 @@ export function calculateCost(
   if (!pricing) {
     console.warn(`Modelo sem preço definido: ${provider}/${model}, usando defaults`);
     // Fallback para preços médios
-    pricing = provider === 'gemini' 
+    pricing = provider === 'gemini'
       ? { input: 0.15, output: 0.60, imageOutput: 0.039 }
-      : { input: 0.15, output: 0.60 };
+      : provider === 'cloudinary'
+        ? { input: 0, output: 0, imageOutput: 0.00044 }
+        : { input: 0.15, output: 0.60 };
   }
 
   // Calcular custos por componente
@@ -175,6 +187,8 @@ export function calculateCost(
  * Obtém o preço de uma imagem para um modelo específico
  */
 export function getImagePrice(model: string): number {
+  if (model === 'upscale') return 0.00044;
+
   // Modelos Gemini com geração de imagens
   if (model.includes('gemini-3-pro-image') || model.includes('gemini-3.0-pro-image')) {
     return 0.134; // $0.134 por imagem
@@ -185,7 +199,7 @@ export function getImagePrice(model: string): number {
   if (model.includes('gemini-2.5-pro')) {
     return 0.039;
   }
-  
+
   // Fallback
   return 0.039;
 }
@@ -196,16 +210,21 @@ export function getImagePrice(model: string): number {
 export function getPricingTableData() {
   return {
     gemini: [
-      { model: 'Gemini 2.5 Flash', input: '$0.15', output: '$0.60', image: '$0.039' },
+      { model: 'Gemini 2.5 Flash', input: '$0.15', output: '$0.60', image: '-' },
       { model: 'Gemini 2.5 Flash Image', input: '$0.15', output: '$0.60', image: '$0.039' },
       { model: 'Gemini 2.5 Pro', input: '$1.25', output: '$10.00', image: '-' },
+      { model: 'Gemini 2.5 Pro Preview', input: '$1.25', output: '$10.00', image: '$0.039' },
       { model: 'Gemini 3 Pro Image', input: '$2.00', output: '$12.00', image: '$0.134' },
+      { model: 'gemini-3-pro-image-preview', input: '$2.00', output: '$12.00', image: '$0.134' },
     ],
     openai: [
       { model: 'GPT-4o Mini', input: '$0.15', output: '$0.60', image: '-' },
       { model: 'GPT-4o', input: '$2.50', output: '$10.00', image: '-' },
       { model: 'GPT-4.1', input: '$2.00', output: '$8.00', image: '-' },
       { model: 'GPT-4.1 Mini', input: '$0.40', output: '$1.60', image: '-' },
+    ],
+    cloudinary: [
+      { model: 'Upscale AI', input: '-', output: '-', image: '$0.00044' },
     ],
     usdToBrl: USD_TO_BRL,
     tokensPerImage: TOKENS_PER_IMAGE,
