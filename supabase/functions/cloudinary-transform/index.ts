@@ -1,126 +1,128 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { v2 as cloudinary } from "npm:cloudinary@2.7.0";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
-  console.log("🚀 FUNÇÃO CLOUDINARY V4.0 FINAL - REQUEST:", req.method);
-
+  // 1. Handle CORS Preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(`[${requestId}] Cloudinary Request Start`);
 
   try {
-    const { imageUrl, ctaText, benefitText } = await req.json();
-
-    console.log("📋 DADOS RECEBIDOS V4.0:");
-    console.log("📋 imageUrl:", imageUrl?.substring(0, 50) + "...");
-    console.log("📋 ctaText:", ctaText);
-    console.log("📋 benefitText:", benefitText);
-
-    if (!imageUrl || !ctaText || !benefitText) {
+    // 2. Parse Body with robust error handling
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error(`[${requestId}] JSON Parse Error:`, e);
       return new Response(
-        JSON.stringify({ error: 'Parâmetros obrigatórios: imageUrl, ctaText, benefitText' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: "JSON Inválido no Body", details: String(e) }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Configurar Cloudinary
+    const { imageUrl, ctaText, benefitText, upscale = false, ping = false } = body;
+
+    // 3. Early Ping Response
+    if (ping) {
+      console.log(`[${requestId}] Ping OK`);
+      return new Response(
+        JSON.stringify({ success: true, message: "Conexão com Edge Function estabelecida! (V6.1)" }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[${requestId}] Processing:`, { hasImage: !!imageUrl, upscale });
+
+    if (!imageUrl) {
+      return new Response(
+        JSON.stringify({ success: false, error: "imageUrl é obrigatório" }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 4. Check Environment Variables
+    const cloudName = Deno.env.get('CLOUDINARY_CLOUD_NAME') || "ddeqeeyo8"; // Fallback para o que vimos antes
     const apiKey = Deno.env.get('CLOUDINARY_API_KEY');
     const apiSecret = Deno.env.get('CLOUDINARY_API_SECRET');
-    const cloudName = "ddeqeeyo8";
 
     if (!apiKey || !apiSecret) {
-      console.error("❌ Credenciais não encontradas");
+      console.error(`[${requestId}] Missing credentials`);
       return new Response(
-        JSON.stringify({ error: 'Credenciais do Cloudinary não configuradas' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: "Configuração do Cloudinary incompleta (API_KEY/SECRET ausentes)" }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log("✅ CONFIGURANDO SDK CLOUDINARY V4.0");
-    cloudinary.config({
-      cloud_name: cloudName,
-      api_key: apiKey,
-      api_secret: apiSecret,
-      secure: true
+    // 5. Generate Signature
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    const publicId = `prod_${Date.now()}`;
+    const folder = "produtos";
+    const strToSign = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
+
+    // Web Crypto API (Native Deno)
+    const msgUint8 = new TextEncoder().encode(strToSign);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // 6. Upload via REST
+    console.log(`[${requestId}] Uploading to ${cloudName}...`);
+    const formData = new FormData();
+    formData.append('file', imageUrl);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', timestamp.toString());
+    formData.append('signature', signature);
+    formData.append('folder', folder);
+    formData.append('public_id', publicId);
+
+    const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData
     });
 
-    // Upload da imagem
-    console.log("📤 FAZENDO UPLOAD COM SDK...");
-    const uploadResult = await cloudinary.uploader.upload(imageUrl, {
-      folder: "produtos",
-      public_id: `produto_${Date.now()}`,
-      overwrite: true,
-      resource_type: "auto"
-    });
+    const uploadResult = await uploadResponse.json();
 
-    console.log("✅ UPLOAD SUCCESS! Public ID:", uploadResult.public_id);
+    if (!uploadResponse.ok) {
+      console.error(`[${requestId}] Cloudinary API Error:`, uploadResult);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Erro na API do Cloudinary",
+          details: uploadResult.error?.message || JSON.stringify(uploadResult)
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Gerar URL transformada
-    console.log("🎨 GERANDO TRANSFORMAÇÕES...");
-    const transformedUrl = cloudinary.url(uploadResult.public_id, {
-      transformation: [
-        { background: "white" },
-        {
-          overlay: {
-            font_family: "Montserrat",
-            font_size: 60,
-            font_weight: "bold",
-            text: ctaText
-          },
-          color: "#000000",
-          gravity: "north",
-          y: 50
-        },
-        {
-          overlay: {
-            font_family: "Montserrat",
-            font_size: 40,
-            font_weight: "bold",
-            text: benefitText
-          },
-          color: "#000000",
-          gravity: "north",
-          y: 120
-        }
-      ]
-    });
+    // 7. Compose URL
+    let transformations = [];
+    if (upscale) transformations.push("e_upscale,q_auto:best");
+    if (ctaText || benefitText) transformations.push("b_white");
 
-    console.log("🎉 TRANSFORMAÇÃO COMPLETA! URL:", transformedUrl);
+    const tStr = transformations.length > 0 ? transformations.join(",") + "/" : "";
+    const transformedUrl = `https://res.cloudinary.com/${cloudName}/image/upload/${tStr}${uploadResult.public_id}`;
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        transformedUrl,
-        message: "Imagem transformada com sucesso!"
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: true, transformedUrl, message: "Sucesso!" }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('💥 ERRO COMPLETO V4.0:', error);
-    console.error('💥 Stack:', error instanceof Error ? error.stack : 'No stack trace');
-    console.error('💥 Message:', error instanceof Error ? error.message : String(error));
-    
+    console.error(`[${requestId}] Fatal Error:`, error);
     return new Response(
       JSON.stringify({
-        error: 'Erro na transformação',
-        details: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : 'No stack trace'
+        success: false,
+        error: "Erro interno crítico na Edge Function",
+        details: error instanceof Error ? error.message : String(error)
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
